@@ -25,7 +25,8 @@
 # 3. Summarize neoadj dataset
 # 4. Summarize adj dataset
 # 5. Expression data filtering
-# 6. Save filtered clinical and expression data
+# 6. Additional formating of clinincal data to aid in analysis
+# 7. Save filtered clinical and expression data
 
 
 
@@ -175,9 +176,9 @@ clin %>%
 
 # neoadj filtering
 #
-# a) Discard samples with missing IHC status for HR and HER2#
+# a) Discard samples with missing IHC status for HR, HER2, and TN
 # For each IHC subtype (HR,HER2,TN):
-# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 clin_neoadj$HR <- filter_data(
   x = clin %>%
@@ -226,9 +227,9 @@ clin_neoadj$TN <- filter_data(
 
 # adj filtering
 #
-# a) Discard samples with missing IHC status for HR and HER2#
+# a) Discard samples with missing IHC status for HR, HER2 and TN
 # For each IHC subtype (HR,HER2,TN):
-# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 
 clin_adj$HR <- filter_data(
@@ -553,8 +554,35 @@ expr_neoadj <- expr %>%
 
 
 
+# 6. Additional formating of clinincal data to aid in analysis
+# ==============================================================================
 
-# 6. Save filtered clinical and expression data
+clin_neoadj <- clin_neoadj %>%
+  dplyr::mutate(
+    # Recoding "Response"
+    Response = if_else(Response == "pCR", 1, 0),
+
+    # Defining starta as the combination of series matrix accession and arm.
+    # Clean strata by removing redundant arm information
+    # noTaxane, No_her2_agent, No_hormone_therapy, No_other_therapy to ""
+    Strata = str_c(Series_matrix_accession,"///", Arm_consolidated) %>%
+      str_replace("\\+noTaxane", "") %>%
+      str_replace("///No_her2_agent", "") %>%
+      str_replace("///No_hormone_therapy", "") %>%
+      str_replace("///No_other_therapy", "") %>%
+      str_replace("///Trastuzumab", "+TRA") %>%
+      str_replace("\\+Taxane", "+T") %>%
+      str_replace("///", ":") # GSE..///AAA > GSE...:AAA
+  )
+
+
+#
+# ==============================================================================
+
+
+
+
+# 7. Save filtered clinical and expression data
 # ==============================================================================
 
 save(clin_neoadj, file = str_c(out_data,"clin_neoadj.RData"))
