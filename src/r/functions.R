@@ -17,9 +17,11 @@ filter_data <- function(x, type = "filter_data"){
   # c) Discard samples with missing clinical endpoint (pCR/DFS) data
   # d) Discard matched samples from longitudnal studies (series matrices)
   #   (i.e. consider only pre-treatment expression profiles),
-  # e) Discard treatment regimens with samples only from a single study,
-  # f) Discard treatment regimens with sample size less than 50, and
-  # g) Discard studies from a treatment regimen with less than 10 samples.
+  # e) Discard studies from a treatment regimen with less than 10 samples.
+  # f) Discard treatment regimens with sample size less than 50 per subtype, and
+  # g) Discard treatment regimens with samples only from a single study per subtype,
+
+
   #
   # The present function performs steps b - g.
 
@@ -31,9 +33,10 @@ filter_data <- function(x, type = "filter_data"){
   # c) Discard samples with missing clinical endpoint (pCR/DFS) data
   # d) Discard matched samples from longitudnal studies (series matrices)
   #   (i.e. consider only pre-treatment expression profiles),
-  # e) Discard treatment regimens with samples only from a single study,
-  # f) Discard treatment regimens with sample size less than 50, and
-  # g) Discard studies from a treatment regimen with less than 10 samples.
+  # e) Discard studies from a treatment regimen with less than 10 samples.
+  # f) Discard treatment regimens with sample size less than 50 per subtype, and
+  # g) Discard treatment regimens with samples only from a single study per subtype,
+
 
 
 
@@ -41,7 +44,7 @@ filter_data <- function(x, type = "filter_data"){
   # type: desription of x, used for printing informative messages.
 
   # x = clin %>%
-  #   dplyr::filter(Regimen_updated == "neoadj")
+  #   dplyr::filter(Regimen_updated == "neoadj" & Subtype_ihc == "HR")
   # type = "neoadj"
 
   cat(
@@ -126,30 +129,8 @@ filter_data <- function(x, type = "filter_data"){
 
 
 
-  # e) Discard treatment regimens with samples only from a single study
-  # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-  xsum <- x %>%
-    dplyr::group_by(Arm_consolidated ) %>%
-    dplyr::summarise(n_dataset = unique(Series_matrix_accession) %>% length(),
-                     n_samp = n(), .groups = "keep") %>%
-    dplyr::filter(n_dataset == 1)
-
-  cat(
-    type,
-    ": Discarding",
-    xsum$n_samp %>% sum(),
-    "samples from",
-    xsum %>% nrow(),
-    "treatment regimens unique to a single study.\n"
-  )
-
-  x <- x %>%
-    dplyr::filter( ! (Arm_consolidated %in% all_of(xsum$Arm_consolidated)) )
-
-
-
-  # f) Discard studies from a treatment regimen with less than 10 samples
+  # e) Discard studies from a treatment regimen with less than 10 samples.
   # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
   xsum <- x %>%
@@ -178,9 +159,8 @@ filter_data <- function(x, type = "filter_data"){
 
 
 
-
-  # g) Discard treatment regimens with sample size less than 50
-  # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+  # f) Discard treatment regimens with sample size less than 50 per subtype, and
+  # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
   xsum <- x %>%
     dplyr::group_by(Arm_consolidated ) %>%
@@ -199,6 +179,31 @@ filter_data <- function(x, type = "filter_data"){
 
   x <- x %>%
     dplyr::filter( ! (Arm_consolidated %in% all_of(xsum$Arm_consolidated)) )
+
+
+
+
+  # g) Discard treatment regimens with samples only from a single study per subtype,
+  # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+  xsum <- x %>%
+    dplyr::group_by(Arm_consolidated ) %>%
+    dplyr::summarise(n_dataset = unique(Series_matrix_accession) %>% length(),
+                     n_samp = n(), .groups = "keep") %>%
+    dplyr::filter(n_dataset == 1)
+
+  cat(
+    type,
+    ": Discarding",
+    xsum$n_samp %>% sum(),
+    "samples from",
+    xsum %>% nrow(),
+    "treatment regimens unique to a single study.\n"
+  )
+
+  x <- x %>%
+    dplyr::filter( ! (Arm_consolidated %in% all_of(xsum$Arm_consolidated)) )
+
 
 
   # Output
@@ -389,3 +394,133 @@ estimate_prog_heterogenity <- function(xclin, sig, perm = 100){
   )
 
 }
+
+
+summarise_interaction <- function(m1, m0, test_var, inter_var){
+
+  # Funtion to extract and summarize interaction effect ready to plot
+
+  # m1: full model with interaction term
+  # m0: null model without interaction term
+  # test_var: variable tested for interaction effect (signature)
+  # inter_var: variable interacting with test var
+  # Note that this script expects the "test_var" to be a continuous variable,
+  # and the "inter_var" to be a factor or a character vector that can be
+  # coerased to be a factor.
+
+  # m0 = m0_inter
+  # m1 = m1_inter
+  # test_var = sig
+  # inter_var = "Arm_consolidated"
+
+  # interaction effect
+  m1_coef <- summary(m1)$coefficients
+  m1_ci <- confint.default(m1)
+  idx <- str_detect(rownames(m1_ci), test_var) %>% which()
+
+  if (identical(rownames(m1_ci)[idx], rownames(m1_coef)[idx])) {
+
+    x <- cbind(m1_coef[idx, ], m1_ci[idx, ])
+
+    # Update wald p with loglikelihood p
+    p <- lrtest(m0, m1)$"Pr(>Chisq)" %>% na.omit() %>% as.numeric()
+
+    # Obsolete code logic
+    # Both pvalues in x is set to p, to aid in plotting
+    # x[, "Pr(>|z|)"] <- p #
+
+    # New code logic
+    # The pvalues can be replicated at any point later in the script,
+    # but deletion is difficult.
+    x[, "Pr(>|z|)"] <- NA # Resetting original pvalues
+    x[1, "Pr(>|z|)"] <- p # Setting likihood ratio test interaction pvalue
+
+
+    # Obsolete logic !!!!!!!!!!!!
+    # nrow(x): the last row will be of interaction term
+
+    # New logic !!!!!!!!!!!!!!!!!
+    # The first row is the effect from reference arm.
+    # All other rows represents change with respect to the reference row
+    # All other rows required to adjust it effect for independet comparison in plots
+    # Adjustment 1: add reference effect to each other row's effect
+    # Adjustment 2: adjust other row's standard error
+    # Adjustment 3: adjust other row's 95% ci
+
+
+    # Updating estimate, std.err and ci for all relevant rows except the 1st row (reference row)
+
+    idx2 <- (1:nrow(x))[-1]
+
+    for(i in idx2){
+
+      # Update Estimate(Log-OR)
+      # Interaction term contains change from reference
+      # To get actual Estiate(Log-OR), add interaction Estiate(Log-OR)
+      # to reference Estiate(Log-OR)
+      x[i, "Estimate"] <- sum(x[c(1, i), "Estimate"])
+
+      # Note in the following code descriptions, coef ~ Estimate(Log-OR).
+      # To get CI of sum of coefs find Std.Error of sum of coefs
+      # Std.Error of sum of coefs: sqrt( sum(coef variances) + 2 * their covariance)
+      # Sum of variances reference from wikipedia, search term: "Variance"
+      se <- sqrt(
+        sum(x[c(1, i), "Std. Error"] ^ 2) +
+          (2 * vcov(m1)[rownames(x)[1], rownames(x)[i]])
+      )
+      x[i, "Std. Error"] <- se
+      x[i, "2.5 %"] <- x[i, "Estimate"] - (1.96 * se)
+      x[i, "97.5 %"] <- x[i, "Estimate"] + (1.96 * se)
+
+    }
+
+  } else {
+    # As an error catching logic
+    x <- rep(NA, 6)
+    names(x) = c("Estimate", "Std. Error", "z value", "Pr(>|z|)", "2.5 %", "97.5 %")
+    #vector names used in following code
+  }
+
+  # Appending reference arm detials to rownames(x)[1]
+  if (class(m1$data[,inter_var] %>% tibble::deframe()) == "factor") {
+    ref_arm <- m1$data[,inter_var] %>% tibble::deframe() %>% levels()[1]
+  } else {
+    ref_arm <- (m1$data[,inter_var] %>% tibble::deframe() %>% factor() %>% levels())[1]
+  }
+  ref_arm <- str_c(inter_var, ref_arm)
+
+  if (str_detect(rownames(x)[1], ":")) {
+
+    # Making sure the row is reference row.
+    # For reference row ":" is not present.
+    stop("Error in interaction summary preparation.")
+
+  } else {
+
+    rownames(x)[1] <- str_c(rownames(x)[1], ":", ref_arm)
+  }
+
+
+
+  # Adding prognostic effect
+  m0_coef <- summary(m0)$coefficients
+  m0_ci <- confint.default(m0)
+
+  x <- rbind(x, cbind(m0_coef[test_var, , drop=F], m0_ci[test_var, , drop = F]))
+  # Note the irrelevant pvalue of prognostic effect is also added to x.
+  # Displaying this prognostic pvalue in interaction plot add confusion.
+  # Ignore the prognostic pvalue.
+
+
+  x %>%
+    as_tibble(rownames = "Module_name") %>%
+    dplyr::rename(
+      Std_error = "Std. Error",
+      Z_value = "z value",
+      P = "Pr(>|z|)",
+      l95 = "2.5 %",
+      u95 = "97.5 %"
+    )
+
+} # end of fun
+

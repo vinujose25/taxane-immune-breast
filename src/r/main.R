@@ -83,7 +83,7 @@ library(MetaGxBreast)
 library(ggpubr) # ggarrange: Arrange nultiple ggplots
                 # annotate_figure: Annotate figures including: i) ggplots, ii) arranged ggplots from ggarrange(), grid.arrange() and plot_grid().
 library(pdftools) # qpdf::pdf_subset: Split, Combine and Compress PDF Files
-
+library(lmtest) # lrtest: likilihood ratio test
 
 # Private
 source("src/r/functions.R")

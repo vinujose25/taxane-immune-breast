@@ -56,6 +56,13 @@ clin_neoadj %>%
 # 1. Per subtype prognosis (arm-study heterogenity)
 # 2. Pan-subtype prognosis (subtype-arm-study heterogenity)
 
+# Note: By definition, prognosis is the natural course of disease independent of
+# treatment regimen. Hence limiting analysis to specific treatment regimen is
+# meaning less. Further, it is wrong to interpret interaction, if prognostic
+# effect is limited to a single treatment regimen and not to others.
+# An interaction test is the minimum requirement to clim a significant treatment
+#  interaction.
+
 
 # All neoadj regimen with Strata info
 clin_neoadj %>%
