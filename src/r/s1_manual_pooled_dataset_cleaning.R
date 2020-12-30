@@ -560,16 +560,16 @@ xsum <- clin_neoadj %>%
 # TN
 # immune * Taxane interaction on pCR in AAA regimen
 # immune * AAA/A0A interaction on pCR in Taxane containing regimen
-# prognostic value of immune irrespective of treatment regimens
+# prognostic value of immune irrespective of treatment regimens (pan treatment)
 
 # HER2
 # immune * Trastuzumab interaction on pCR in AAA+Taxane regimen
-# prognostic value of immune irrespective of treatment regimens
+# prognostic value of immune irrespective of treatment regimens (pan treatment)
 
 # HR
 # immune * Taxane interaction on pCR in AAA regimen
 # immune * AAA/A0A interaction on pCR in Taxane containing regimen
-# prognostic value of immune irrespective of treatment regimens
+# prognostic value of immune irrespective of treatment regimens (pan treatment)
 
 # All
 # immune * subtype interacton on pCR in AAA+Taxane, AAA+noTaxane, A0A+Taxane
