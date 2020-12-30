@@ -195,10 +195,10 @@ clin_neoadj$HR <- filter_data(
 # neoadj : Discarding 102 samples with missing treatment data.
 # neoadj : Discarding 18 samples with missing clinical response data.
 # neoadj : Discarding 0 matched samples from longitudnal studies.
-# neoadj : Discarding 43 samples from 11 series matrices with <10 samples per treatment regimen.
+# neoadj : Discarding 71 samples from 13 series matrices with <20 samples per treatment regimen.
 # neoadj : Discarding 32 samples from 1 treatment regimens with <50 samples.
 # neoadj : Discarding 60 samples from 1 treatment regimens unique to a single study.
-# neoadj : End with 779 no.of samples.
+# neoadj : End with 751 no.of samples.
 
 
 
@@ -211,10 +211,10 @@ clin_neoadj$HER2 <- filter_data(
 # neoadj : Discarding 68 samples with missing treatment data.
 # neoadj : Discarding 16 samples with missing clinical response data.
 # neoadj : Discarding 0 matched samples from longitudnal studies.
-# neoadj : Discarding 49 samples from 12 series matrices with <10 samples per treatment regimen.
-# neoadj : Discarding 216 samples from 8 treatment regimens with <50 samples.
+# neoadj : Discarding 103 samples from 16 series matrices with <20 samples per treatment regimen.
+# neoadj : Discarding 188 samples from 6 treatment regimens with <50 samples.
 # neoadj : Discarding 50 samples from 1 treatment regimens unique to a single study.
-# neoadj : End with 248 no.of samples.
+# neoadj : End with 222 no.of samples.
 
 
 clin_neoadj$TN <- filter_data(
@@ -226,10 +226,10 @@ clin_neoadj$TN <- filter_data(
 # neoadj : Discarding 52 samples with missing treatment data.
 # neoadj : Discarding 37 samples with missing clinical response data.
 # neoadj : Discarding 0 matched samples from longitudnal studies.
-# neoadj : Discarding 39 samples from 10 series matrices with <10 samples per treatment regimen.
+# neoadj : Discarding 55 samples from 11 series matrices with <20 samples per treatment regimen.
 # neoadj : Discarding 58 samples from 2 treatment regimens with <50 samples.
 # neoadj : Discarding 59 samples from 1 treatment regimens unique to a single study.
-# neoadj : End with 542 no.of samples.
+# neoadj : End with 526 no.of samples.
 
 
 
@@ -251,10 +251,10 @@ clin_adj$HR <- filter_data(
 # adj : Discarding 4 samples with missing treatment data.
 # adj : Discarding 52 samples with missing clinical follow-up data.
 # adj : Discarding 0 matched samples from longitudnal studies.
-# adj : Discarding 56 samples from 17 series matrices with <10 samples per treatment regimen.
-# adj : Discarding 31 samples from 2 treatment regimens with <50 samples.
+# adj : Discarding 97 samples from 20 series matrices with <20 samples per treatment regimen.
+# adj : Discarding 45 samples from 1 treatment regimens with <50 samples.
 # adj : Discarding 0 samples from 0 treatment regimens unique to a single study.
-# adj : End with 55 no.of samples.
+# adj : End with 0 no.of samples.
 
 
 clin_adj$HER2 <- filter_data(
@@ -266,8 +266,8 @@ clin_adj$HER2 <- filter_data(
 # adj : Discarding 7 samples with missing treatment data.
 # adj : Discarding 30 samples with missing clinical follow-up data.
 # adj : Discarding 0 matched samples from longitudnal studies.
-# adj : Discarding 39 samples from 17 series matrices with <10 samples per treatment regimen.
-# adj : Discarding 33 samples from 2 treatment regimens with <50 samples.
+# adj : Discarding 52 samples from 18 series matrices with <20 samples per treatment regimen.
+# adj : Discarding 20 samples from 1 treatment regimens with <50 samples.
 # adj : Discarding 0 samples from 0 treatment regimens unique to a single study.
 # adj : End with 0 no.of samples.
 
@@ -281,8 +281,8 @@ clin_adj$TN <- filter_data(
 # adj : Discarding 4 samples with missing treatment data.
 # adj : Discarding 20 samples with missing clinical follow-up data.
 # adj : Discarding 0 matched samples from longitudnal studies.
-# adj : Discarding 28 samples from 14 series matrices with <10 samples per treatment regimen.
-# adj : Discarding 11 samples from 1 treatment regimens with <50 samples.
+# adj : Discarding 39 samples from 15 series matrices with <20 samples per treatment regimen.
+# adj : Discarding 0 samples from 0 treatment regimens with <50 samples.
 # adj : Discarding 0 samples from 0 treatment regimens unique to a single study.
 # adj : End with 0 no.of samples.
 
@@ -293,7 +293,8 @@ clin_adj$TN <- filter_data(
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 clin_neoadj <- bind_rows(clin_neoadj)
-clin_adj <- bind_rows(clin_adj)
+# clin_adj <- bind_rows(clin_adj)
+# !!!!!!! No dataset from adjuvant setting satisfying filterng criteria
 
 
 #
@@ -320,19 +321,19 @@ xsum <- clin_neoadj %>%
   # TRUE = data, FALSE = no data, NA = no data
   dplyr::summarise(N = n(), .groups = "keep")
 #   Age   Grade Node  Size  Subtype Arm   pCR       N
-# 1 FALSE TRUE  FALSE TRUE  TRUE    TRUE  TRUE     16
+# 1 FALSE TRUE  FALSE TRUE  TRUE    TRUE  TRUE      1
 # 2 TRUE  FALSE FALSE FALSE TRUE    TRUE  TRUE      2
 # 3 TRUE  FALSE FALSE TRUE  TRUE    TRUE  TRUE    229
 # 4 TRUE  FALSE TRUE  FALSE TRUE    TRUE  TRUE      1
-# 5 TRUE  FALSE TRUE  TRUE  TRUE    TRUE  TRUE     86
-# 6 TRUE  TRUE  FALSE FALSE TRUE    TRUE  TRUE    154
-# 7 TRUE  TRUE  FALSE TRUE  TRUE    TRUE  TRUE     63
-# 8 TRUE  TRUE  TRUE  TRUE  TRUE    TRUE  TRUE   1018
+# 5 TRUE  FALSE TRUE  TRUE  TRUE    TRUE  TRUE     82
+# 6 TRUE  TRUE  FALSE FALSE TRUE    TRUE  TRUE    138
+# 7 TRUE  TRUE  FALSE TRUE  TRUE    TRUE  TRUE     50
+# 8 TRUE  TRUE  TRUE  TRUE  TRUE    TRUE  TRUE    996
 
 
-xsum$N %>% sum() # 1569; 1569 - 1018 = 551
+xsum$N %>% sum() # 1499; 1499 - 996 = 503
 # !!!!!!!!!!!!!!!!!!!
-# 1018 samples got all relevant clinical-pathological variables
+# 996 samples got all relevant clinical-pathological variables
 
 xsum <- clin_neoadj %>%
   dplyr::filter(!is.na(Age_bin_50) &
@@ -348,7 +349,7 @@ xsum <- clin_neoadj %>%
   dplyr::filter(N >= 50)
 #   Arm_consolidated                                                     Subtype_ihc     N
 # 1 AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy HR             58
-# 2 AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   HER2          104
+# 2 AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   HER2           82
 # 3 AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   HR            486
 # 4 AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   TN            269
 
@@ -376,10 +377,10 @@ xsum <-clin_neoadj %>%
   # TRUE = data, FALSE = no data, NA = no data
   dplyr::summarise(N = n(), .groups = "keep")
 #   Subtype Arm   pCR       N
-# 1 TRUE    TRUE  TRUE   1569
+# 1 TRUE    TRUE  TRUE   1499
 
 # !!!!!!!!!!!!!!!!!!!
-# 1569 samples got all subtype, arm and pCR data
+# 1499 samples got all subtype, arm and pCR data
 
 xsum <- clin_neoadj %>%
   dplyr::filter(!is.na(Subtype_ihc) &
@@ -390,15 +391,15 @@ xsum <- clin_neoadj %>%
   dplyr::summarise(N = n(), .groups = "keep") %>%
   dplyr::filter(N >= 50)
 #   Arm_consolidated                                                     Subtype_ihc     N
-# 1 A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   HR            167
+# 1 A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   HR            139
 # 2 A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   TN            150
 
 # 3 AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy HR             91
 # 4 AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy TN             83
 
-# 5 AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   HER2          161
+# 5 AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   HER2          135
 # 6 AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   HR            521
-# 7 AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   TN            309
+# 7 AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   TN            293
 # 8 AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_therapy     HER2           87
 
 
@@ -455,94 +456,95 @@ xsum <- clin_neoadj %>%
 
 
 
-
-# 4. Summarize adj dataset
-# ==============================================================================
-
-
-# Clinical-vars, subtype, treatment and response data
-# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-xsum <- clin_adj %>%
-  dplyr::group_by(Age = !is.na(Age_bin_50),
-                  Grade = !is.na(Grade_bin),
-                  Node = !is.na(Node_bin),
-                  Size = !is.na(Size_bin),
-                  Subtype = !is.na(Subtype_ihc),
-                  Arm = !is.na(Arm_consolidated),
-                  Event = !is.na(Event_dfs)) %>%
-  # TRUE = data, FALSE = no data, NA = no data
-  dplyr::summarise(N = n(), .groups = "keep")
-#   Age   Grade Node  Size  Subtype Arm   Event     N
-# 1 TRUE  TRUE  TRUE  TRUE  TRUE    TRUE  TRUE     55
-
-# 55 samples got all relevant clinical-pathological variables
-
-xsum <- clin_adj %>%
-  dplyr::filter(!is.na(Age_bin_50) &
-                  !is.na(Grade_bin) &
-                  !is.na(Node_bin) &
-                  !is.na(Size_bin) &
-                  !is.na(Subtype_ihc) &
-                  !is.na(Arm_consolidated) &
-                  !is.na(Event_dfs)) %>%
-  dplyr::group_by(Arm_consolidated, Subtype_ihc) %>%
-  # TRUE = data, FALSE = no data, NA = no data
-  dplyr::summarise(N = n(), .groups = "keep") %>%
-  dplyr::filter(N >= 50)
-#   Arm_consolidated                                            Subtype_ihc     N
-# 1 000+noTaxane///No_her2_agent///Tamoxifen///No_other_therapy HR             55
-
-# Potential analyses !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# If age, grade, node, size, subtype, arm, and followup needs to be used,
-# the analysis that can be performed are
-# 1) Prognosis in Tamoxifen arm in HR
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-
-# Subtype, treatment and response data
-# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-xsum <- clin_adj %>%
-  dplyr::group_by(Subtype = !is.na(Subtype_ihc),
-                  Arm = !is.na(Arm_consolidated),
-                  Event = !is.na(Event_dfs)) %>%
-  # TRUE = data, FALSE = no data, NA = no data
-  dplyr::summarise(N = n(), .groups = "keep")
-#   Subtype Arm   Event     N
-# 1 TRUE    TRUE  TRUE     55
-
-# 55 samples got all subtype, arm and followup data
-
-xsum <- clin_adj %>%
-  dplyr::filter(!is.na(Subtype_ihc) &
-                  !is.na(Arm_consolidated) &
-                  !is.na(Event_dfs)) %>%
-  dplyr::group_by(Arm_consolidated, Subtype_ihc) %>%
-  # TRUE = data, FALSE = no data, NA = no data
-  dplyr::summarise(N = n(), .groups = "keep") %>%
-  dplyr::filter(N >= 50)
-#   Arm_consolidated                                            Subtype_ihc     N
-# 1 000+noTaxane///No_her2_agent///Tamoxifen///No_other_therapy HR             55
-
-
-# Potential analyses !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# If subtype, arm and followup needs to be used,
-# the analysis that can be performed are
-# 1) Prognosis in Tamoxifen arm in HR
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-
-# Adjuvant analysis summary
-# >>>>>>>>>>>>>>>>>>>>>>>>>
-# Discard Adjuvant dataset, as we cannot check the interaction between
-# treditional immunologic/immunomodulatory treatment and tumor-immune-respone on
-# clinical response.
-
+# # Old version !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# # In new version no adjuvant dataset cleared filtering criteria
+# # 4. Summarize adj dataset
+# # ==============================================================================
 #
-#===============================================================================
+#
+# # Clinical-vars, subtype, treatment and response data
+# # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+#
+# xsum <- clin_adj %>%
+#   dplyr::group_by(Age = !is.na(Age_bin_50),
+#                   Grade = !is.na(Grade_bin),
+#                   Node = !is.na(Node_bin),
+#                   Size = !is.na(Size_bin),
+#                   Subtype = !is.na(Subtype_ihc),
+#                   Arm = !is.na(Arm_consolidated),
+#                   Event = !is.na(Event_dfs)) %>%
+#   # TRUE = data, FALSE = no data, NA = no data
+#   dplyr::summarise(N = n(), .groups = "keep")
+# #   Age   Grade Node  Size  Subtype Arm   Event     N
+# # 1 TRUE  TRUE  TRUE  TRUE  TRUE    TRUE  TRUE     55
+#
+# # 55 samples got all relevant clinical-pathological variables
+#
+# xsum <- clin_adj %>%
+#   dplyr::filter(!is.na(Age_bin_50) &
+#                   !is.na(Grade_bin) &
+#                   !is.na(Node_bin) &
+#                   !is.na(Size_bin) &
+#                   !is.na(Subtype_ihc) &
+#                   !is.na(Arm_consolidated) &
+#                   !is.na(Event_dfs)) %>%
+#   dplyr::group_by(Arm_consolidated, Subtype_ihc) %>%
+#   # TRUE = data, FALSE = no data, NA = no data
+#   dplyr::summarise(N = n(), .groups = "keep") %>%
+#   dplyr::filter(N >= 50)
+# #   Arm_consolidated                                            Subtype_ihc     N
+# # 1 000+noTaxane///No_her2_agent///Tamoxifen///No_other_therapy HR             55
+#
+# # Potential analyses !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# # If age, grade, node, size, subtype, arm, and followup needs to be used,
+# # the analysis that can be performed are
+# # 1) Prognosis in Tamoxifen arm in HR
+# # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#
+#
+#
+# # Subtype, treatment and response data
+# # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+#
+# xsum <- clin_adj %>%
+#   dplyr::group_by(Subtype = !is.na(Subtype_ihc),
+#                   Arm = !is.na(Arm_consolidated),
+#                   Event = !is.na(Event_dfs)) %>%
+#   # TRUE = data, FALSE = no data, NA = no data
+#   dplyr::summarise(N = n(), .groups = "keep")
+# #   Subtype Arm   Event     N
+# # 1 TRUE    TRUE  TRUE     55
+#
+# # 55 samples got all subtype, arm and followup data
+#
+# xsum <- clin_adj %>%
+#   dplyr::filter(!is.na(Subtype_ihc) &
+#                   !is.na(Arm_consolidated) &
+#                   !is.na(Event_dfs)) %>%
+#   dplyr::group_by(Arm_consolidated, Subtype_ihc) %>%
+#   # TRUE = data, FALSE = no data, NA = no data
+#   dplyr::summarise(N = n(), .groups = "keep") %>%
+#   dplyr::filter(N >= 50)
+# #   Arm_consolidated                                            Subtype_ihc     N
+# # 1 000+noTaxane///No_her2_agent///Tamoxifen///No_other_therapy HR             55
+#
+#
+# # Potential analyses !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# # If subtype, arm and followup needs to be used,
+# # the analysis that can be performed are
+# # 1) Prognosis in Tamoxifen arm in HR
+# # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#
+#
+#
+# # Adjuvant analysis summary
+# # >>>>>>>>>>>>>>>>>>>>>>>>>
+# # Discard Adjuvant dataset, as we cannot check the interaction between
+# # treditional immunologic/immunomodulatory treatment and tumor-immune-respone on
+# # clinical response.
+#
+# #
+# #===============================================================================
 
 
 
