@@ -17,7 +17,7 @@ filter_data <- function(x, type = "filter_data"){
   # c) Discard samples with missing clinical endpoint (pCR/DFS) data
   # d) Discard matched samples from longitudnal studies (series matrices)
   #   (i.e. consider only pre-treatment expression profiles),
-  # e) Discard studies from a treatment regimen with less than 10 samples.
+  # e) Discard studies from a treatment regimen with less than 20 samples.
   # f) Discard treatment regimens with sample size less than 50 per subtype, and
   # g) Discard treatment regimens with samples only from a single study per subtype,
 
@@ -33,11 +33,14 @@ filter_data <- function(x, type = "filter_data"){
   # c) Discard samples with missing clinical endpoint (pCR/DFS) data
   # d) Discard matched samples from longitudnal studies (series matrices)
   #   (i.e. consider only pre-treatment expression profiles),
-  # e) Discard studies from a treatment regimen with less than 10 samples.
+  # e) Discard studies from a treatment regimen with less than 20 samples per subtype.
   # f) Discard treatment regimens with sample size less than 50 per subtype, and
   # g) Discard treatment regimens with samples only from a single study per subtype,
 
-
+# Note:
+# Less than 20 samples will crreate convergense issue and
+# large variance in estimates which are problematic in prognosis, interaction
+# and heterogenisty assesments
 
 
   # x: clinical data tibble
@@ -130,13 +133,14 @@ filter_data <- function(x, type = "filter_data"){
 
 
 
-  # e) Discard studies from a treatment regimen with less than 10 samples.
+  # e) Discard studies from a treatment regimen with less than 20 samples.
   # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
   xsum <- x %>%
     dplyr::group_by(Arm_consolidated, Series_matrix_accession) %>%
     dplyr::summarise(n_samp = n(), .groups = "keep") %>%
-    dplyr::filter(n_samp < 10)
+    # dplyr::filter(n_samp < 10) # old cutoff
+  dplyr::filter(n_samp < 20)
 
   cat(
     type,
@@ -144,7 +148,7 @@ filter_data <- function(x, type = "filter_data"){
     xsum$n_samp %>% sum(),
     "samples from",
     xsum %>% nrow(),
-    "series matrices with <10 samples per treatment regimen.\n"
+    "series matrices with <20 samples per treatment regimen.\n"
   )
 
   x <- x %>%
@@ -351,6 +355,14 @@ get_module_score <- function(x, module_list, by = "Entrez_Gene"){
 # }
 
 estimate_prog_heterogenity <- function(xclin, sig, perm = 100){
+
+  # xclin <- clin_neoadj %>%
+  #   dplyr::filter(Subtype_ihc == "HR" &
+  #                   Strata != "GSE22226_GPL4133:A0A+T" &
+  #                   Strata != "GSE21974:A0A+T" &
+  #                   Arm_consolidated == "A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy")
+  # sig = "Cholesterol3"
+  # perm = 100
 
   xeffect <-  purrr::map(
     xclin$Strata %>% unique(),
