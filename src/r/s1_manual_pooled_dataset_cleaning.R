@@ -200,17 +200,6 @@ clin_neoadj$HR <- filter_data(
 # neoadj : Discarding 60 samples from 1 treatment regimens unique to a single study.
 # neoadj : End with 779 no.of samples.
 
-# old version for backup
-# neoadj : Started with 1034 no.of samples.
-# neoadj : Discarding 102 samples with missing treatment data.
-# neoadj : Discarding 18 samples with missing clinical response data.
-# neoadj : Discarding 0 matched samples from longitudnal studies.
-# neoadj : Discarding 37 samples from 6 treatment regimens unique to a single study.
-# neoadj : Discarding 38 samples from 6 series matrices with <10 samples per treatment regimen.
-# neoadj : Discarding 0 samples from 0 treatment regimens with <50 samples.
-# neoadj : End with 839 no.of samples.
-
-
 
 
 clin_neoadj$HER2 <- filter_data(
@@ -227,15 +216,6 @@ clin_neoadj$HER2 <- filter_data(
 # neoadj : Discarding 50 samples from 1 treatment regimens unique to a single study.
 # neoadj : End with 248 no.of samples.
 
-# old version for backup
-# neoadj : Started with 647 no.of samples.
-# neoadj : Discarding 68 samples with missing treatment data.
-# neoadj : Discarding 16 samples with missing clinical response data.
-# neoadj : Discarding 0 matched samples from longitudnal studies.
-# neoadj : Discarding 221 samples from 9 treatment regimens unique to a single study.
-# neoadj : Discarding 41 samples from 10 series matrices with <10 samples per treatment regimen.
-# neoadj : Discarding 53 samples from 2 treatment regimens with <50 samples.
-# neoadj : End with 248 no.of samples.
 
 clin_neoadj$TN <- filter_data(
   x = clin %>%
@@ -251,15 +231,6 @@ clin_neoadj$TN <- filter_data(
 # neoadj : Discarding 59 samples from 1 treatment regimens unique to a single study.
 # neoadj : End with 542 no.of samples.
 
-# old version for backup
-# neoadj : Started with 787 no.of samples.
-# neoadj : Discarding 52 samples with missing treatment data.
-# neoadj : Discarding 37 samples with missing clinical response data.
-# neoadj : Discarding 0 matched samples from longitudnal studies.
-# neoadj : Discarding 24 samples from 2 treatment regimens unique to a single study.
-# neoadj : Discarding 38 samples from 9 series matrices with <10 samples per treatment regimen.
-# neoadj : Discarding 35 samples from 1 treatment regimens with <50 samples.
-# neoadj : End with 601 no.of samples.
 
 
 
@@ -285,15 +256,6 @@ clin_adj$HR <- filter_data(
 # adj : Discarding 0 samples from 0 treatment regimens unique to a single study.
 # adj : End with 55 no.of samples.
 
-# old version for backup
-# adj : Started with 198 no.of samples.
-# adj : Discarding 4 samples with missing treatment data.
-# adj : Discarding 52 samples with missing clinical follow-up data.
-# adj : Discarding 0 matched samples from longitudnal studies.
-# adj : Discarding 42 samples from 8 treatment regimens unique to a single study.
-# adj : Discarding 29 samples from 10 series matrices with <10 samples per treatment regimen.
-# adj : Discarding 16 samples from 1 treatment regimens with <50 samples.
-# adj : End with 55 no.of samples.
 
 clin_adj$HER2 <- filter_data(
   x = clin %>%
@@ -309,15 +271,6 @@ clin_adj$HER2 <- filter_data(
 # adj : Discarding 0 samples from 0 treatment regimens unique to a single study.
 # adj : End with 0 no.of samples.
 
-# old version for backup
-# adj : Started with 109 no.of samples.
-# adj : Discarding 7 samples with missing treatment data.
-# adj : Discarding 30 samples with missing clinical follow-up data.
-# adj : Discarding 0 matched samples from longitudnal studies.
-# adj : Discarding 14 samples from 8 treatment regimens unique to a single study.
-# adj : Discarding 25 samples from 9 series matrices with <10 samples per treatment regimen.
-# adj : Discarding 33 samples from 2 treatment regimens with <50 samples.
-# adj : End with 0 no.of samples.
 
 clin_adj$TN <- filter_data(
   x = clin %>%
@@ -333,15 +286,7 @@ clin_adj$TN <- filter_data(
 # adj : Discarding 0 samples from 0 treatment regimens unique to a single study.
 # adj : End with 0 no.of samples.
 
-# old version for backup
-# adj : Started with 63 no.of samples.
-# adj : Discarding 4 samples with missing treatment data.
-# adj : Discarding 20 samples with missing clinical follow-up data.
-# adj : Discarding 0 matched samples from longitudnal studies.
-# adj : Discarding 5 samples from 5 treatment regimens unique to a single study.
-# adj : Discarding 23 samples from 9 series matrices with <10 samples per treatment regimen.
-# adj : Discarding 11 samples from 1 treatment regimens with <50 samples.
-# adj : End with 0 no.of samples.
+
 
 
 # Merging the clin_neoadj/clin_adj (list) as a single tibble.
@@ -420,31 +365,6 @@ xsum <- clin_neoadj %>%
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-# Old for backup
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-#   Arm_consolidated                                                     Subtype_ihc     N
-# 1 A00+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy TN             57
-# 2 AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy HR             58
-# 3 AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   HER2          104
-# 4 AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   HR            486
-# 5 AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   TN            269
-
-
-# Potential analyses !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# If age, grade, node, size, subtype, arm, and pCR needs to be used,
-# the analysis that can be performed are
-# 1) Interaction between immune, subtype and pCR in AAA+Taxane regimen.
-# 2) Prognosis of immune in AAA+Taxane (pan subtype)
-
-# 3) Interaction between immune, AAA+/-taxane and pCR in HR subtype.
-# 4) Prognosis of immune in HR (pan tretment regimen)
-
-# 5) Prognosis of immune in TN (pan tretment regimen)
-
-# 6) Prognosis of immune in BC (pooled dataset)
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
 
 # Subtype, treatment and response data
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -507,52 +427,6 @@ xsum <- clin_neoadj %>%
 
 
 
-# Old for backup
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-#   Arm_consolidated                                                     Subtype_ihc     N
-# 1 0A0+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   HR             60
-
-# 2 A00+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy TN             59
-
-# 3 A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   HR            167
-# 4 A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   TN            150
-
-# 5 AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy HR             91
-# 6 AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy TN             83
-
-# 7 AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   HER2          161
-# 8 AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   HR            521
-# 9 AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy   TN            309
-
-# 10 AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_therapy     HER2           87
-
-
-# Potential analyses !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# If subtype, arm and pCR needs to be used,
-# the analysis that can be performed are
-
-# TN
-# 1) Interaction between immune, AAA(+/-taxane) and pCR in TN subtype.
-# 2) Interaction between immune, Taxane+(AAA/A0A) and pCR in TN subtype.
-# 3) Interaction between immune, (AAA/A00) and pCR in TN subtype.
-# 4) Prognosis of immune in TN (pan treatment)
-
-# HER2
-# 5) Interaction between immune, AAA+Taxane(+/-TRA). and pCR in HER2 subtype.
-# 6) Prognosis of immune in HER2 (pan treatment)
-
-# HR
-# 7) Interaction between immune, AAA+-Taxane and pCR in HR
-# 8) Interaction between immune, Taxane+(AAA/A0A/0A0) and pCR in HR
-# 9) Prognosis of immune in HR (pan treatment)
-
-# All
-# 10) Interaction between immune, subtype and pCR in AAA+Taxane, AAA+noTaxane, and AOA+Taxane regimen.
-# 11) Prognosis of immune in breast cancer (pan subtype, pan treatment)
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-
 
 # Neoadjuvant analysis summary
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -575,30 +449,6 @@ xsum <- clin_neoadj %>%
 # immune * subtype interacton on pCR in AAA+Taxane, AAA+noTaxane, A0A+Taxane
 # prognosis of immune in breast cancer (pan subtype, pan treatment)
 
-
-
-
-# Old for backup
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-# TN
-# immune * Taxane interaction on pCR in AAA regimen
-# immune * AAA/A0A interaction on pCR in Taxane containing regimen
-# immune * AAA/A00 interaction on pCR in non-Taxane regimen
-# prognostic value of immune irrespective of treatment regimens
-
-# HER2
-# immune * Trastuzumab interaction on pCR in AAA+Taxane regimen
-# prognostic value of immune irrespective of treatment regimens
-
-# HR
-# immune * Taxane interaction on pCR in AAA regimen
-# immune * AAA/A0A/0A0 interaction on pCR in Taxane containing regimen
-# prognostic value of immune irrespective of treatment regimens
-
-# All
-# immune * subtype interacton on pCR in AAA+Taxane, AAA+noTaxane, A0A+Taxane
-# prognosis of immune in breast cancer (pan subtype, pan treatment)
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 #
 #===============================================================================
@@ -740,13 +590,9 @@ clin_neoadj <- clin_neoadj %>%
 # 7. Save filtered clinical and expression data
 # ==============================================================================
 
-# new data
-save(clin_neoadj, file = str_c(out_data,"clin_neoadj2.RData"))
-save(expr_neoadj, file = str_c(out_data,"expr_neoadj2.RData"))
 
-# old obselete data
-# save(clin_neoadj, file = str_c(out_data,"clin_neoadj.RData"))
-# save(expr_neoadj, file = str_c(out_data,"expr_neoadj.RData"))
+save(clin_neoadj, file = str_c(out_data,"clin_neoadj.RData"))
+save(expr_neoadj, file = str_c(out_data,"expr_neoadj.RData"))
 
 rm(clin, clin_adj, expr)
 #
