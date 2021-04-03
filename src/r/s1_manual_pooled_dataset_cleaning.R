@@ -22,11 +22,10 @@
 # >>>>>>>>>>>>>>>>
 # 1. Load and prepare data
 # 2. Clinical data filtering (filter expression data later)
-# 3. Summarize neoadj dataset
-# 4. Summarize adj dataset
-# 5. Expression data filtering
-# 6. Additional formating of clinincal data to aid in analysis
-# 7. Save filtered clinical and expression data
+# 3. Summarize neoadj/adj dataset
+# 4. Expression data filtering
+# 5. Additional formating of clinincal data to aid in analysis
+# 6. Save filtered clinical and expression data
 
 
 
@@ -178,8 +177,6 @@ clin %>%
 # 8 neoadj          NA            514
 
 
-
-
 # neoadj filtering
 #
 # a) Discard samples with missing IHC status for HR, HER2, and TN
@@ -303,8 +300,13 @@ clin_neoadj <- bind_rows(clin_neoadj)
 
 
 
-# 3. Summarize neoadj dataset
+# 3. Summarize neoadj/adj dataset
 # ==============================================================================
+
+# Note !!!
+# No adj dataset cleared filtering criteria
+# Summary of neoadj dataset is given below
+
 
 
 # Clinical-vars, subtype, treatment and response data
@@ -387,6 +389,7 @@ xsum <- clin_neoadj %>%
                   !is.na(Arm_consolidated) &
                   !is.na(Response)) %>%
   dplyr::group_by(Arm_consolidated, Subtype_ihc) %>%
+  # dplyr::group_by(Arm_consolidated, Subtype_ihc, Hr) %>% # new
   # TRUE = data, FALSE = no data, NA = no data
   dplyr::summarise(N = n(), .groups = "keep") %>%
   dplyr::filter(N >= 50)
@@ -412,7 +415,7 @@ xsum <- clin_neoadj %>%
 # 2) Interaction between immune, Taxane+(AAA/A0A) and pCR in TN subtype.
 # 3) Prognosis of immune in TN (pan treatment)
 
-# HER2
+# HER2 (Note include HR stratification in the anlysis)
 # 4) Interaction between immune, AAA+Taxane(+/-TRA). and pCR in HER2 subtype.
 # 5) Prognosis of immune in HER2 (pan treatment)
 
@@ -437,7 +440,7 @@ xsum <- clin_neoadj %>%
 # immune * AAA/A0A interaction on pCR in Taxane containing regimen
 # prognostic value of immune irrespective of treatment regimens (pan treatment)
 
-# HER2
+# HER2 (Note include HR stratification in the anlysis)
 # immune * Trastuzumab interaction on pCR in AAA+Taxane regimen
 # prognostic value of immune irrespective of treatment regimens (pan treatment)
 
@@ -450,6 +453,25 @@ xsum <- clin_neoadj %>%
 # immune * subtype interacton on pCR in AAA+Taxane, AAA+noTaxane, A0A+Taxane
 # prognosis of immune in breast cancer (pan subtype, pan treatment)
 
+
+# Summary of HR stratified HER2
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+xsum <- clin_neoadj %>%
+  dplyr::filter(!is.na(Subtype_ihc) &
+                  !is.na(Arm_consolidated) &
+                  !is.na(Response)) %>%
+  dplyr::filter(Subtype_ihc == "HER2") %>%
+  dplyr::group_by(Arm_consolidated, Subtype_ihc, Hr) %>%
+  dplyr::summarise(N = n(), .groups = "keep")
+#   Arm_consolidated                                              Subtype_ihc Hr        N
+# 1 AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_t… HER2        neg      80
+# 2 AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_t… HER2        pos      55
+# 3 AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_the… HER2        neg      58
+# 4 AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_the… HER2        pos      29
+
+# Note !!!
+# Include transtuzumab interaction analysis in each HR+ and HR- HER2 amplified
+# subtype as supplementary.
 
 #
 #===============================================================================
@@ -549,7 +571,7 @@ xsum <- clin_neoadj %>%
 
 
 
-# 5. Expression data filtering
+# 4. Expression data filtering
 # ==============================================================================
 
 expr_neoadj <- expr %>%
@@ -561,7 +583,7 @@ expr_neoadj <- expr %>%
 
 
 
-# 6. Additional formating of clinincal data to aid in analysis
+# 5. Additional formating of clinincal data to aid in analysis
 # ==============================================================================
 
 clin_neoadj <- clin_neoadj %>%
@@ -579,18 +601,63 @@ clin_neoadj <- clin_neoadj %>%
       str_replace("///No_other_therapy", "") %>%
       str_replace("///Trastuzumab", "+TRA") %>%
       str_replace("\\+Taxane", "+T") %>%
-      str_replace("///", ":") # GSE..///AAA > GSE...:AAA
+      str_replace("///", ":"), # GSE..///AAA > GSE...:AAA
+
+    # Added on 3/4/21
+    # Integrate HR status in the the treatment strata for HER2
+    # Objective:
+    # 1) To asses HR status based difference in response
+    # 2) Usually in clinics HR+ve samples were given hormone therapy
+    #     irrespective of HER2 status.
+    Strata = if_else(Subtype_ihc == "HER2", str_c(Strata,":",Hr), Strata) %>%
+      str_replace("pos","HR+") %>%
+      str_replace("neg", "HR-")
   )
 
-
+clin_neoadj %>%
+  dplyr::group_by(Subtype_ihc, Hr, Strata) %>%
+  dplyr::summarise(N = n(), Pcr = Response %>% sum()) %>%
+  as.data.frame()
+#    Subtype_ihc  Hr                 Strata   N Pcr
+# 1         HER2 neg     GSE20194:AAA+T:HR-  25  13
+# 2         HER2 neg     GSE32646:AAA+T:HR-  18   9
+# 3         HER2 neg GSE42822:AAA+T+TRA:HR-  15  10
+# 4         HER2 neg     GSE50948:AAA+T:HR-  37   9
+# 5         HER2 neg GSE50948:AAA+T+TRA:HR-  43  25
+# 6         HER2 pos     GSE20194:AAA+T:HR+  25   4
+# 7         HER2 pos     GSE32646:AAA+T:HR+  16   3
+# 8         HER2 pos GSE42822:AAA+T+TRA:HR+   9   2
+# 9         HER2 pos     GSE50948:AAA+T:HR+  14   4
+# 10        HER2 pos GSE50948:AAA+T+TRA:HR+  20   6
+# 11          HR pos         GSE20194:AAA+T 141   9
+# 12          HR pos           GSE20271:AAA  49   3
+# 13          HR pos         GSE20271:AAA+T  44   3
+# 14          HR pos           GSE22093:AAA  42  10
+# 15          HR pos         GSE23988:AAA+T  32   7
+# 16          HR pos         GSE25066:A0A+T  35   3
+# 17          HR pos         GSE25066:AAA+T 194  22
+# 18          HR pos         GSE32646:AAA+T  55   5
+# 19          HR pos         GSE41998:A0A+T 104  12
+# 20          HR pos         GSE42822:AAA+T  29   8
+# 21          HR pos         GSE50948:AAA+T  26   4
+# 22          TN neg         GSE20194:AAA+T  64  25
+# 23          TN neg           GSE20271:AAA  28   4
+# 24          TN neg         GSE20271:AAA+T  31   9
+# 25          TN neg           GSE22093:AAA  55  18
+# 26          TN neg         GSE23988:AAA+T  29  13
+# 27          TN neg         GSE25066:A0A+T  25   6
+# 28          TN neg         GSE25066:AAA+T 119  43
+# 29          TN neg         GSE32646:AAA+T  26  10
+# 30          TN neg         GSE41998:A0A+T 125  51
+# 31          TN neg         GSE42822:AAA+T  24  12
 #
 # ==============================================================================
 
 
 
 
-# 7. Save filtered clinical and expression data
-# ==============================================================================
+# 6. Save filtered clinical and expression data
+# ========================================================================= =====
 
 
 save(clin_neoadj, file = str_c(out_data,"clin_neoadj.RData"))
