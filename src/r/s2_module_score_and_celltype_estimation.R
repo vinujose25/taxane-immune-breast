@@ -11,9 +11,9 @@
 
 # Script strucutre
 # >>>>>>>>>>>>>>>>
-# 1. Load data (geo, tcga, metabric)
-# 2. Load, clean and summarize gene-modules.
-# 3. Gene-module validation in tcga-metabric.
+# 1. Load data (geo, finher, tcga, metabric)
+# 2. Load, clean, subset gene-modules.
+# 3. Gene-module validation in tcga and metabric.
 # 4. Compute module-scores and update clin_neoadj.
 # 5. Estimate celltype scores and update clin_neoadj.
 # 6. Additional formating of clinincal data to aid in analysis
@@ -21,58 +21,78 @@
 
 
 
-# 1. Load data (geo, tcga, metabric)
+# 1. Load and prepare data (geo, finher, tcga, metabric)
 # ==============================================================================
 
-# geo data
-# >>>>>>>>
-
-load("results/data/expr_neoadj.RData")
+# clinical (to update module sore and celltype estimates)
 load("results/data/clin_neoadj.RData")
+load("results/data/clin_finher.RData")
+
+# expression (to subset original gene modules and validate in tcga/metabric)
+load("results/data/expr_neoadj.RData")
+load("results/data/expr_finher.RData")
+# TCGA/METABRIC from metagxbreast R-package
+# Ref: inhouse project "tcga-metabric-metagxbreast" (https://osf.io/jb8za/)
+load("data/tcga.RData")
+load("data/metabric.RData")
+
+dim(expr_neoadj) # 9184 1500
+dim(expr_finher) # 3350 301
+
+dim(tcga$expr) # [1] 19405  1074
+dim(metabric$expr) # [1] 24924  2115
 
 
-# tcga-metabric
-# >>>>>>>>>>>>>
-
-load("~/projects/on/tcga-metabric-metagxbreast/results/data/tcga.RData")
-# Note:
-# Use tcga expression and clinical data independetly.
-# Ids between expression and clinical data are not matching.
-load("~/projects/on/tcga-metabric-metagxbreast/results/data/metabric.RData")
-
-# Convert expression matrix to samples x genes
-# (Required for module score algorithm)
-tcga$expr <- tcga$expr %>% t_tibble(names_x_desc = "Sample_id")
-metabric$expr <- metabric$expr %>% t_tibble(names_x_desc = "Sample_id")
+# Convert expression matrix to samples x genes (for module score algorithm)
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+expr_neoadj <- expr_neoadj %>% t_tibble(names_x_desc = "Sample_id")
+expr_finher <- expr_finher %>% t_tibble(names_x_desc = "Sample_id")
+tcga <- tcga$expr %>% t_tibble(names_x_desc = "Sample_id")
+metabric <- metabric$expr %>% t_tibble(names_x_desc = "Sample_id")
 
 
-# tcga-metabric: Discard genes with atleast one NA expression values in any samples
-# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-tcga$expr %>% purrr::map_lgl(~any(is.na(.x))) %>% table() # includes Non-NA Sample_id
+# Discard genes with atleast one NA expression values in any samples
+# (NAs will creat problems in module score algorithm)
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+expr_neoadj %>% purrr::map_lgl(~any(is.na(.x))) %>% table() # includes Non-NA Sample_id
+# FALSE
+# 9185
+# expr_neoadj: No genes with NAs, No genes to discard
+
+expr_finher %>% purrr::map_lgl(~any(is.na(.x))) %>% table() # includes Non-NA Sample_id
+# FALSE
+# 3351
+# expr_finher: No genes with NAs, No genes to discard
+
+tcga %>% purrr::map_lgl(~any(is.na(.x))) %>% table() # includes Non-NA Sample_id
 # FALSE
 # 19406
 # tcga: No genes with NAs, No genes to discard
 
-metabric$expr %>% purrr::map_lgl(~any(is.na(.x))) %>% table() # includes Non-NA Sample_id
+metabric %>% purrr::map_lgl(~any(is.na(.x))) %>% table() # includes Non-NA Sample_id
 # FALSE  TRUE
 # 24918     7
 # metabric: 7 genes with NAs, 7 genes to discard
-idx <- metabric$expr %>% purrr::map_lgl(~!any(is.na(.x))) %>% which()
-metabric$expr <- metabric$expr[,idx]
+idx <- metabric %>% purrr::map_lgl(~!any(is.na(.x))) %>% which()
+metabric <- metabric[,idx]
 
 #
 # ==============================================================================
 
 
 
-# 2. Load, clean and summarize gene-modules.
+# 2. Load and, clean gene-modules.
 # ==============================================================================
 
-# gene modules
-module_consolidated <- read_tsv(file = "data/gene_modules/Gene_modules_consolidated_clean_ncbi_hugo.tsv")
+# gene modules (vectorised)
+module_consolidated <- read_tsv(
+  file = "data/gene_modules/Gene_modules_consolidated_clean_ncbi_hugo.tsv"
+)
 
 
+# clean gene modules
 module_consolidated <- module_consolidated %>%
   dplyr::mutate(
 
@@ -93,11 +113,8 @@ module_consolidated <- module_consolidated %>%
     Direction = if_else(Coefficient < 0 , -1, 1)
   )
 
-# # Consolidated and cleaned gene modules
-# write_tsv(x = module_consolidated,
-#           path = str_c(out_data, "module_consolidated.tsv"))
 
-
+# vector to list
 module_list <- purrr::map(
   module_consolidated$Module_id %>% unique(),
   function(nme, module_consolidated){
@@ -115,32 +132,29 @@ names(module_list) <- module_consolidated$Module_id %>% unique()
 
 
 
-module_list_subset <- purrr::map(
+# Neoadj module subset
+module_list_neoadj <- purrr::map(
   module_list,
   function(sig, genes){
     sig %>%
       dplyr::filter(Ncbi_gene_id %in% all_of(genes))
     # Gene-ids are already formatted to ncbi_*
   },
-  genes = expr_neoadj$Ncbi_gene_id# %>% str_replace("ncbi_", "")
+  genes = names(expr_neoadj)[-1]
 )
 
 
+# finher module subset
+module_list_finher <- purrr::map(
+  module_list,
+  function(sig, genes){
+    sig %>%
+      dplyr::filter(Ncbi_gene_id %in% all_of(genes))
+    # Gene-ids are already formatted to ncbi_*
+  },
+  genes = names(expr_finher)[-1]
+)
 
-module_stat <- tibble(
-  Module_id = names(module_list),
-  Original_size = purrr::map_int(module_list, nrow),
-  Subset_size = purrr::map_int(module_list_subset, nrow)
-) %>%
-  dplyr::mutate(
-    Subset_size_percent = (Subset_size/Original_size) * 100
-  )
-
-
-# Discard modules with subset size ==0
-identical(module_stat$Module_id, names(module_list)) # TRUE
-module_list <- module_list[module_stat$Subset_size > 0]
-module_list_subset <- module_list_subset[module_stat$Subset_size > 0]
 
 #
 # ==============================================================================
@@ -150,74 +164,138 @@ module_list_subset <- module_list_subset[module_stat$Subset_size > 0]
 # 3. Gene-module validation in tcga-metabric.
 # ==============================================================================
 
-# tcga corr
-# >>>>>>>>>
 
-score_full <- get_module_score(x = tcga$expr, module_list = module_list, by = "Ncbi_gene_id")
-score_subset <- get_module_score(x = tcga$expr, module_list = module_list_subset, by = "Ncbi_gene_id")
+# Neoadj module-subset validation
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-xx <- cor(score_full[,-1], score_subset[,-1], method = "pearson") %>% diag()
-xx <- tibble(
-  Module_id = names(xx),
-  Cor_tcga = xx
-)
-
-# update module_stat with tcga correlation
-module_stat <- module_stat %>%
-  dplyr::left_join(xx, by = "Module_id")
+# validation on tcga
+validation_neoadj_tcga <- validate_gene_modules(
+  module_full_list = module_list,
+  module_subset_list = module_list_neoadj,
+  validation_data = tcga)
 
 
-
-# metabric corr
-# >>>>>>>>>>>>>
-
-score_full <- get_module_score(x = metabric$expr, module_list = module_list, by = "Ncbi_gene_id")
-score_subset <- get_module_score(x = metabric$expr, module_list = module_list_subset, by = "Ncbi_gene_id")
-
-xx <- cor(score_full[,-1], score_subset[,-1], method = "pearson") %>% diag()
-xx <- tibble(
-  Module_id = names(xx),
-  Cor_metabric = xx
-)
-
-# update module_stat with metabric correlation
-module_stat <- module_stat %>%
-  dplyr::left_join(xx, by = "Module_id")
+# validation on metabric
+validation_neoadj_metabric <- validate_gene_modules(
+  module_full_list = module_list,
+  module_subset_list = module_list_neoadj,
+  validation_data = metabric)
 
 
-# Valid gene-modules
-# >>>>>>>>>>>>>>>>>>
+validation_neoadj_stat <- bind_cols(
+  validation_neoadj_tcga %>%
+    dplyr::select(Module_id, Module_full_size, Module_subset_size,
+                  Module_subset_size_percent),
+  validation_neoadj_tcga %>%
+    dplyr::select(Pearson, Spearman) %>%
+    dplyr::rename_all(~str_c("tcga_",.x)),
+  validation_neoadj_metabric %>%
+    dplyr::select(Pearson, Spearman) %>%
+    dplyr::rename_all(~str_c("metabric_",.x))
+) %>%
+  dplyr::mutate(
+    Valid_modules = (tcga_Pearson > 0.9 & metabric_Pearson > 0.9),
+    Valid_modules = if_else(is.na(Valid_modules), FALSE, Valid_modules)
+  )
 
-module_stat <- module_stat %>%
-  dplyr::mutate(Is_reliable = if_else(
-    (Cor_tcga > 0.9 & Cor_metabric > 0.9),
-    "yes", "no"))
+
+
+# FinHER module-subset validation
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+# validation on tcga
+validation_finher_tcga <- validate_gene_modules(
+  module_full_list = module_list,
+  module_subset_list = module_list_finher,
+  validation_data = tcga)
+
+# validation in metabric
+validation_finher_metabric <- validate_gene_modules(
+  module_full_list = module_list,
+  module_subset_list = module_list_finher,
+  validation_data = metabric)
+
+
+validation_finher_stat <- bind_cols(
+  validation_finher_tcga %>%
+    dplyr::select(Module_id, Module_full_size, Module_subset_size,
+                  Module_subset_size_percent),
+  validation_finher_tcga %>%
+    dplyr::select(Pearson, Spearman) %>%
+    dplyr::rename_all(~str_c("tcga_",.x)),
+  validation_finher_metabric %>%
+    dplyr::select(Pearson, Spearman) %>%
+    dplyr::rename_all(~str_c("metabric_",.x))
+) %>%
+  dplyr::mutate(
+    Valid_modules = (tcga_Pearson > 0.9 & metabric_Pearson > 0.9),
+    Valid_modules = if_else(is.na(Valid_modules), FALSE, Valid_modules)
+  )
+
+# cleaning
+rm(validation_neoadj_tcga, validation_neoadj_metabric)
+rm(validation_finher_tcga, validation_finher_metabric)
+rm(tcga, metabric)
 
 #
 # ==============================================================================
 
 
 
-# 4. Compute module-scores and update clin_neoadj.
+# 4. Compute module-scores and update clin_neoadj/clin_finher.
 # ==============================================================================
 
-# Module filtering
-nme <- module_stat %>%
-  dplyr::filter(!is.na(Is_reliable) &
-                  (Is_reliable == "yes") &
-                  str_detect(string = Module_id, pattern = "Becht_2016", negate = TRUE)) %>%
-  # Becht_2016 is signatures from MCPcounter.
-  # Need original algorithm for celltype estimation.
+
+# Neoadj module scores
+# >>>>>>>>>>>>>>>>>>>>
+
+# Valid modules
+nme <- validation_neoadj_stat %>%
+  dplyr::filter(Valid_modules) %>%
   dplyr::select(Module_id) %>%
   tibble::deframe()
+# 33 valid modules out of 36
+
 
 # Module-score
-x <- t_tibble(x = expr_neoadj, names_x_desc = "Sample_geo_accession")
-score <- get_module_score(x = x, module_list = module_list_subset[nme], by = "Ncbi_gene_id")
+score <- get_module_score(
+  x = expr_neoadj,
+  module_list = module_list_neoadj[nme],
+  by = "Ncbi_gene_id"
+) %>%
+  dplyr::rename(Sample_geo_accession = "Sample_id")
+
 
 # clin updation
 clin_neoadj <- clin_neoadj %>%
   dplyr::left_join(score, by = "Sample_geo_accession")
+
+
+
+# Finher module scores
+# >>>>>>>>>>>>>>>>>>>>
+
+# Valid modules
+nme <- validation_finher_stat %>%
+  dplyr::filter(Valid_modules) %>%
+  dplyr::select(Module_id) %>%
+  tibble::deframe()
+# 23 valid modules out of 36
+
+
+# Module-score
+score <- get_module_score(
+  x = expr_finher,
+  module_list = module_list_finher[nme],
+  by = "Ncbi_gene_id"
+) %>%
+  dplyr::rename(CEL_filename = "Sample_id")
+
+
+# clin updation
+clin_finher <- clin_finher %>%
+  dplyr::left_join(score, by = "CEL_filename")
+
 
 #
 # ==============================================================================
@@ -231,44 +309,93 @@ clin_neoadj <- clin_neoadj %>%
 # probesets=read.table(curl("http://raw.githubusercontent.com/ebecht/MCPcounter/master/Signatures/probesets.txt"),sep="\t",stringsAsFactors=FALSE,colClasses="character")
 # genes=read.table(curl("http://raw.githubusercontent.com/ebecht/MCPcounter/master/Signatures/genes.txt"),sep="\t",stringsAsFactors=FALSE,header=TRUE,colClasses="character",check.names=FALSE)
 
-x <- expr_neoadj[, -1] %>% as.matrix()
-rownames(x) <- expr_neoadj$Ncbi_gene_id %>% str_replace("ncbi_", "")
+# MCPcounter input
+# expression: matrix or data.frame with features in rows and samples in columns
+
+
+# Neoadj
+# >>>>>>
+
+x <- t_tibble(expr_neoadj, names_x_desc = "Ncbi_gene_id")
+xx <- x[, -1] %>% as.matrix()
+rownames(xx) <- x$Ncbi_gene_id %>% str_replace("ncbi_", "")
 
 score <- MCPcounter.estimate(
-  expression = x,
+  expression = xx,
   featuresType = "ENTREZ_ID"
 ) %>%
-  t()
-# Note that estimate for Cd8.T.Cells is missing as
-# the single marker gene for this celltype is missing in pooled dataset.
+  as_tibble(rownames = "Cell_type") %>%
+  dplyr::mutate(
+    Cell_type = str_c("MCPcounter_",
+                      Cell_type %>% str_to_title() %>% str_replace_all(" ", "."))
+    ) %>%
+  t_tibble(names_x_desc = "Sample_geo_accession")  # id name identical to clin_neoadj
+
+# Note that only 9 celltypes were estimated out of 10 MCPcounter celltypes.
+# Cd8.T.Cells is missing as the single marker gene for this celltype is
+# missing in pooled neoadjuvant dataset.
 
 
-# Making celltype nams identical to that in module_list
-colnames(score) <- str_c(
-  "Becht_2016_",
-  (colnames(score) %>%
-     str_to_title() %>%
-     str_replace_all(" ", "."))
-)
-
-
-# Celltype estimate filtering
-nme <- module_stat %>%
-  dplyr::filter(!is.na(Is_reliable) &
-                  (Is_reliable == "yes") &
-                  str_detect(string = Module_id, pattern = "Becht_2016")) %>%
-  # Becht_2016 is signatures from MCPcounter.
+# Filtering invalid MCPcounter estimates due missing marker genes
+nme <- validation_neoadj_stat %>%
+  dplyr::filter(Valid_modules) %>%
+  # "Becht_2016" and "MCPcounter" represents same modules.
+  # Modules with "Becht_2016" keyword is computed as an average.
+  # Modules with "MCPcounter" keyword is computed as using original algorithm.
+  dplyr::mutate(Module_id = Module_id %>% str_replace("Becht_2016", "MCPcounter")) %>%
   dplyr::select(Module_id) %>%
-  tibble::deframe() # Discarded Neutrophils signature
-
-
+  tibble::deframe()
+nme <- intersect(nme, names(score))
 score <- score %>%
-  as_tibble(rownames = "Sample_geo_accession") %>%
-  dplyr::select(Sample_geo_accession, all_of(nme))
+  dplyr::select(1, all_of(nme))
+
 
 # clin updation
 clin_neoadj <- clin_neoadj %>%
   dplyr::left_join(score, by = "Sample_geo_accession")
+
+
+
+# FinHER
+# >>>>>>
+
+x <- t_tibble(expr_finher, names_x_desc = "Ncbi_gene_id")
+xx <- x[, -1] %>% as.matrix()
+rownames(xx) <- x$Ncbi_gene_id %>% str_replace("ncbi_", "")
+
+score <- MCPcounter.estimate(
+  expression = xx,
+  featuresType = "ENTREZ_ID"
+) %>%
+  as_tibble(rownames = "Cell_type") %>%
+  dplyr::mutate(
+    Cell_type = str_c("MCPcounter_",
+                      Cell_type %>% str_to_title() %>% str_replace_all(" ", "."))
+  ) %>%
+  t_tibble(names_x_desc = "CEL_filename") # id name identical to clin_finher
+
+# Note that only 5 celltypes were estimated out of 10 MCPcounter celltypes.
+# Celltypes are missing as the marker genes for the celltypes were
+# missing in finher dataset.
+
+
+# Filtering invalid MCPcounter estimates due missing marker genes
+nme <- validation_finher_stat %>%
+  dplyr::filter(Valid_modules) %>%
+  # "Becht_2016" and "MCPcounter" represents same modules.
+  # Modules with "Becht_2016" keyword is computed as an average.
+  # Modules with "MCPcounter" keyword is computed as using original algorithm.
+  dplyr::mutate(Module_id = Module_id %>% str_replace("Becht_2016", "MCPcounter")) %>%
+  dplyr::select(Module_id) %>%
+  tibble::deframe()
+nme <- intersect(nme, names(score))
+score <- score %>%
+  dplyr::select(1, all_of(nme))
+
+
+# clin updation
+clin_finher <- clin_finher %>%
+  dplyr::left_join(score, by = "CEL_filename")
 
 
 #
@@ -297,14 +424,43 @@ clin_neoadj <- clin_neoadj %>%
     Proliferation1 = Desmedt_2008_Proliferation,
     Proliferation2 = Yang_2018_Proliferation,
     Proliferation3 = Nirmal_2018_Proliferation,
-    Tcell = Becht_2016_T.Cells,
-    CLymphocyte = Becht_2016_Cytotoxic.Lymphocytes,
-    Bcell = Becht_2016_B.Lineage,
-    NKcell = Becht_2016_Nk.Cells,
-    Monocyte = Becht_2016_Monocytic.Lineage,
-    MDendritic = Becht_2016_Myeloid.Dendritic.Cells,
-    # Endothelial = Becht_2016_Endothelial.Cells, # not reliable
-    Fibroblast = Becht_2016_Fibroblasts
+    Tcell = MCPcounter_T.Cells,
+    CLymphocyte = MCPcounter_Cytotoxic.Lymphocytes,
+    Bcell = MCPcounter_B.Lineage,
+    NKcell = MCPcounter_Nk.Cells,
+    Monocyte = MCPcounter_Monocytic.Lineage,
+    MDendritic = MCPcounter_Myeloid.Dendritic.Cells,
+    # Endothelial = Becht_2016_Endothelial.Cells, # reliable but irrelevant !!!
+    Fibroblast = MCPcounter_Fibroblasts
+  )
+
+
+clin_finher <- clin_finher %>%
+  dplyr::mutate(
+    # Renaming by preserving original variables
+    Immune1 = Gruosso_2019_Immune.cdsig1,
+    Immune2 = Hamy_2016_Immune,
+    Immune3 = Desmedt_2008_Immune,
+    Interferon1 = Gruosso_2019_Interferon.edsig2,
+    Interferon2 = Hamy_2016_Interferon,
+    Interferon3 = Nirmal_2018_Interferon,
+    # Cholesterol1 = Gruosso_2019_Cholesterol.edsig5, # unreliable !!!
+    Cholesterol2 = Sorrentino_2014_Cholesterol.mevalonate,
+    # Cholesterol3 = Simigdala_2016_Cholesterol, # unreliable !!!
+    Fibrosis1 = Gruosso_2019_Fibrosis.cdsig3,
+    Fibrosis2 = Hamy_2016_Ecm,
+    Fibrosis3 = Triulzi_2013_Ecm,
+    Proliferation1 = Desmedt_2008_Proliferation,
+    Proliferation2 = Yang_2018_Proliferation,
+    Proliferation3 = Nirmal_2018_Proliferation,
+    Tcell = MCPcounter_T.Cells,
+    # CLymphocyte = MCPcounter_Cytotoxic.Lymphocytes, # unreliable !!!
+    # Bcell = MCPcounter_B.Lineage, # unreliable !!!
+    # NKcell = MCPcounter_Nk.Cells, # unreliable !!!
+    # Monocyte = MCPcounter_Monocytic.Lineage, # unreliable !!!
+    # MDendritic = MCPcounter_Myeloid.Dendritic.Cells, # unreliable !!!
+    # Endothelial = Becht_2016_Endothelial.Cells, # unreliable and irrelevant !!!
+    Fibroblast = MCPcounter_Fibroblasts
   )
 
 
@@ -313,20 +469,24 @@ clin_neoadj <- clin_neoadj %>%
 
 
 
-
 # 7. Save Robjects
 # ==============================================================================
-
 
 # Robject created:
 save(module_consolidated, file = str_c(out_data, "module_consolidated.RData"))
 save(module_list, file = str_c(out_data, "module_list.RData"))
-save(module_list_subset, file = str_c(out_data, "module_list_subset.RData"))
-save(module_stat, file = str_c(out_data, "module_stat.RData"))
+# save(module_list_subset, file = str_c(out_data, "module_list_subset.RData")) # obsolete
+# Print consolidated finher and neoadj module subset list in figures_tables_data.R script
+save(module_list_neoadj, file = str_c(out_data, "module_list_neoadj.RData"))
+save(module_list_finher, file = str_c(out_data, "module_list_finher.RData"))
+
+# save(module_stat, file = str_c(out_data, "module_stat.RData")) # obsolete
+save(validation_neoadj_stat, file = str_c(out_data, "validation_neoadj_stat.RData"))
+save(validation_finher_stat, file = str_c(out_data, "validation_finher_stat.RData"))
 
 # Robject updated:
 save(clin_neoadj, file = str_c(out_data, "clin_neoadj.RData"))
-
+save(clin_finher, file = str_c(out_data, "clin_finher.RData"))
 
 #
 # ==============================================================================
