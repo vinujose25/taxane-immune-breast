@@ -71,19 +71,36 @@ out_documents <- "results/documents/"
 
 # Public
 library(tidyverse)
+library(ggstance) # position_dodgev() # vertical dodging
 library(MCPcounter) # MCPcounter.estimate: produce cell type estimates
-library(hablar) # retype: Transforms all elements into simple classes
+# library(hablar) # retype: Transforms all elements into simple classes
 library(rmarkdown) # render: To render the Rmarkdown file into specific output format
 # library(openxlsx) #
-# library(writexl) # write_xlsx: wrirte xlsx files in multiple sheets
+
+library(writexl) # write_xlsx: wrirte xlsx files in multiple sheets
 # library(readxl) # read_excel: Read xls and xlsx files
 library(altmeta) # metahet: Meta-Analysis Heterogeneity Measures
 # library(meta) # metabin: Meta-analysis of binary outcome data
-library(MetaGxBreast)
+# library(MetaGxBreast)
 library(ggpubr) # ggarrange: Arrange nultiple ggplots
                 # annotate_figure: Annotate figures including: i) ggplots, ii) arranged ggplots from ggarrange(), grid.arrange() and plot_grid().
 library(pdftools) # qpdf::pdf_subset: Split, Combine and Compress PDF Files
+library(genefu) # rescale() based on quantiles
 library(lmtest) # lrtest: likilihood ratio test
+library(survival) # pspline(), coxph()
+library(splines) # ns()
+# library(coxme)
+# library(lme4)
+library(survminer) # ggsurvplot()
+# NOTE: surminer depends on  ggpubr package which has ggarrange() function
+# Try using ggarrange to arrange ggaurvplot()
+library(grid) # unit()
+library(survcomp) # combine.test()
+library(pROC) # auc
+
+# library(ggsci) # scale_color_jco() Ref : https://www.datanovia.com/en/blog/ggplot-colors-best-tricks-you-will-love/#:~:text=In%20this%20case%2C%20we'll,that%20are%20color%2Dblind%20friendly.
+
+
 
 # Private
 source("src/r/functions.R")
@@ -109,6 +126,7 @@ source("src/r/functions.R")
 #       Sourced under "Library" section.
 # s1_pooled_dataset_cleaning.R:
 #       Filter pooled dataset based on the criteria specified in the text.
+# tilsig.R
 # s2_module_score_and_celltype_estimation.R:
 #       Clean gene-modules of biological processes and celltype.
 #       Validate the cleaned gene-modules using TCGA/METABRIC(MeatGxBreast) datasets.
@@ -206,9 +224,9 @@ source("src/r/functions.R")
 # manuscript.Rmd
 # >>>>>>>>>>>>>>
 
-# Rmarkdown version of the manuscript after review.
-render("src/r/manuscript.Rmd", output_dir = out_documents)
-# Ref: https://community.rstudio.com/t/is-it-possible-to-save-the-html-output-in-a-directory-which-is-not-the-one-where-the-rmd-file-resides/3588/5
+# # Rmarkdown version of the manuscript after review.
+# render("src/r/manuscript.Rmd", output_dir = out_documents)
+# # Ref: https://community.rstudio.com/t/is-it-possible-to-save-the-html-output-in-a-directory-which-is-not-the-one-where-the-rmd-file-resides/3588/5
 
 
 #
