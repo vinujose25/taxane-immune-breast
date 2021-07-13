@@ -22,6 +22,39 @@
 # ==============================================================================
 
 load("results/data/clin_neoadj.RData")
+# load("results/data/expr_neoadj.RData") # for TILsig computation
+# load("results/data/tilsig_clean.RData") # for TILsig computation
+#
+#
+# # Update clin_neoadj with TILsig score
+# # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# sig <- tilsig_clean$ALL %>%
+#   dplyr::select(Direction, Ncbi_gene_id1)
+# nrow(sig) # 994
+#
+# sig <- sig %>%
+#   dplyr::filter(Ncbi_gene_id1 %in% all_of(expr_neoadj$Ncbi_gene_id))
+# nrow(sig) # 632
+#
+# # Compute module score and update clin_finher
+# score <- get_module_score(
+#   x = expr_neoadj %>% t_tibble(names_x_desc = "Sample_geo_accession"),
+#   module_list = list(TILsig_imm = sig %>%
+#                        dplyr::filter(Direction == 1) %>%
+#                        dplyr::mutate(Direction = 1), # average imm
+#                      TILsig_fib = sig %>%
+#                        dplyr::filter(Direction == -1) %>%
+#                        dplyr::mutate(Direction = 1), # average fib
+#                      TILsig = sig), # weighted average
+#   by = "Ncbi_gene_id1"
+# ) %>%
+#   dplyr::mutate(TILsig_imm = TILsig_imm %>% genefu::rescale(q=0.05),
+#                 TILsig_fib = TILsig_fib %>% genefu::rescale(q=0.05),
+#                 TILsig = TILsig %>% genefu::rescale(q=0.05))
+#
+# clin_neoadj <- clin_neoadj %>% left_join(score, by = "Sample_geo_accession")
+
+
 
 
 # Summarize clin_neoadj
@@ -32,47 +65,98 @@ load("results/data/clin_neoadj.RData")
 clin_neoadj %>%
   dplyr::group_by(
     Subtype = Subtype_ihc,
+    Hr,
     Arm = Arm_consolidated
   ) %>%
   dplyr::summarise(N = n()) %>%
   as.data.frame()
 
-#    Subtype                                                                  Arm   N
-# 1     HER2   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy 161
-# 2     HER2     AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_therapy  87
+#    Subtype  Hr                                                                  Arm   N
+# 1     HER2 neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy  80
+# 2     HER2 neg     AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_therapy  58
 
-# 3       HR   0A0+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy  60
-# 4       HR   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy 167
-# 5       HR AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy  91
-# 6       HR   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy 521
+# 3     HER2 pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy  55
+# 4     HER2 pos     AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_therapy  29
 
-# 7       TN A00+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy  59
-# 8       TN   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy 150
-# 9       TN AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy  83
-# 10      TN   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy 309
+# 5       HR pos   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy 139
+# 6       HR pos AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy  91
+# 7       HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy 521
+
+# 8       TN neg   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy 150
+# 9       TN neg AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy  83
+# 10      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy 293
 
 
 # Analysis
-# 1. Per subtype prognosis (arm-study heterogenity)
-# 2. Pan-subtype prognosis (subtype-arm-study heterogenity)
+# 1. Per subtype prognosis (hr-arm-study heterogenity)
+# 2. Pan-subtype prognosis (subtype-hr-arm-study heterogenity)
 
-# Note: By definition, prognosis is the natural course of disease independent of
+# Analysis note 1:
+# For the main analysis consider HER2 as a whole (i.e. both HR- and HR+ HER2) with
+# stratification based on hr-arm-study.
+# Further as a supplementary analysis, repeat the same analysis (as in HER2 whole)
+# in each HR-HER2+ and HR+HER2+ independetly.
+
+# Analysis note 2:
+# By definition, prognosis is the natural course of disease independent of
 # treatment regimen. Hence limiting analysis to specific treatment regimen is
-# meaning less. Further, it is wrong to interpret interaction, if prognostic
-# effect is limited to a single treatment regimen and not to others.
+# meaning less. Further, it is wrong to interpret interaction from prognostic model
+# even if prognostic effect is limited to a single treatment regimen and not to others.
 # An interaction test is the minimum requirement to clim a significant treatment
-#  interaction.
+# interaction.
 
 
 # All neoadj regimen with Strata info
 clin_neoadj %>%
   dplyr::group_by(
     Subtype = Subtype_ihc,
+    Hr,
     Arm = Arm_consolidated,
     Strata # identical results when Strata =  Series_matrix_accession
   ) %>%
   dplyr::summarise(N = n(), Event = which(Response == 1) %>% length()) %>%
+  dplyr::mutate(Event_percet = (Event/N) * 100) %>%
   as.data.frame()
+
+#    Subtype  Hr                                                                  Arm                 Strata   N Event Event_percet
+# 1     HER2 neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     GSE20194:AAA+T:HR-  25    13    52.000000
+# 2     HER2 neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     GSE32646:AAA+T:HR-  18     9    50.000000
+# 3     HER2 neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     GSE50948:AAA+T:HR-  37     9    24.324324
+# 4     HER2 neg     AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_therapy GSE42822:AAA+T+TRA:HR-  15    10    66.666667
+# 5     HER2 neg     AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_therapy GSE50948:AAA+T+TRA:HR-  43    25    58.139535
+
+# 6     HER2 pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     GSE20194:AAA+T:HR+  25     4    16.000000
+# 7     HER2 pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     GSE32646:AAA+T:HR+  16     3    18.750000
+# 8     HER2 pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     GSE50948:AAA+T:HR+  14     4    28.571429
+# 9     HER2 pos     AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_therapy GSE42822:AAA+T+TRA:HR+   9     2    22.222222
+# Note that the above strata with 9 samples create convergense issue !!!!
+# 10    HER2 pos     AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_therapy GSE50948:AAA+T+TRA:HR+  20     6    30.000000
+
+# 11      HR pos   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE25066:A0A+T  35     3     8.571429
+# 12      HR pos   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE41998:A0A+T 104    12    11.538462
+# 13      HR pos AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy           GSE20271:AAA  49     3     6.122449
+# 14      HR pos AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy           GSE22093:AAA  42    10    23.809524
+# 15      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE20194:AAA+T 141     9     6.382979
+# 16      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE20271:AAA+T  44     3     6.818182
+# 17      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE23988:AAA+T  32     7    21.875000
+# 18      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE25066:AAA+T 194    22    11.340206
+# 19      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE32646:AAA+T  55     5     9.090909
+# 20      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE42822:AAA+T  29     8    27.586207
+# 21      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE50948:AAA+T  26     4    15.384615
+
+# 22      TN neg   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE25066:A0A+T  25     6    24.000000
+# 23      TN neg   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE41998:A0A+T 125    51    40.800000
+# 24      TN neg AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy           GSE20271:AAA  28     4    14.285714
+# 25      TN neg AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy           GSE22093:AAA  55    18    32.727273
+# 26      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE20194:AAA+T  64    25    39.062500
+# 27      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE20271:AAA+T  31     9    29.032258
+# 28      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE23988:AAA+T  29    13    44.827586
+# 29      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE25066:AAA+T 119    43    36.134454
+# 30      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE32646:AAA+T  26    10    38.461538
+# 31      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE42822:AAA+T  24    12    50.000000
+
+# Note !!!!!
+# The event rate in HR subtype is low possibily due to lack of hormone therapy
 
 
 #
@@ -145,10 +229,11 @@ clin_neoadj %>%
 # Get prognostic effect and heterogenity measurement
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-# Prognosis summary
-prog_sum <- purrr::map(
 
-  c("TN", "HER2", "HR", "ALL"),
+# Prognosis summary
+geo_prog <- purrr::map(
+
+  c("TN", "HR-HER2+", "HR+HER2+", "HER2", "HR", "ALL"),
 
   function(subtype, clin){
 
@@ -156,9 +241,22 @@ prog_sum <- purrr::map(
 
     xclin <- switch (
       subtype,
+
       ALL = clin,
+
+      HER2 = clin %>%
+        dplyr::filter(Subtype_ihc == subtype),
+
+      "HR+HER2+" = clin %>%
+        dplyr::filter(Subtype_ihc2 == subtype & Strata != "GSE42822:AAA+T+TRA"),
+      # The above strata has only 9 samples with 2 events
+      # If included in analysis, the above strata will throw the following warnings.
+      # Warning messages:
+      # 1: glm.fit: algorithm did not converge
+      # 2: glm.fit: fitted probabilities numerically 0 or 1 occurred
+
       clin %>%
-        dplyr::filter(Subtype_ihc == subtype)
+        dplyr::filter(Subtype_ihc2 == subtype)
     )
 
     # sig = "Immune1"
@@ -168,7 +266,11 @@ prog_sum <- purrr::map(
     # Per sig prognosis + heterogenity
     xx <- purrr::map(
 
-      c("Immune1", "Immune2", "Immune3",
+      # c("TILsig", "TILsig_imm", "TILsig_fib",
+      c("TILsig_scaled",
+        "TILsig_APP_Fc", "TILsig_Immune", "TILsig_IFNg", #"TILsig_Innate",
+        "TILsig_ECM", "TILsig_Adhesion",
+        "Immune1", "Immune2", "Immune3",
         "Interferon1", "Interferon2", "Interferon3",
         "Cholesterol1", "Cholesterol2", "Cholesterol3",
         "Fibrosis1", "Fibrosis2", "Fibrosis3",
@@ -178,12 +280,30 @@ prog_sum <- purrr::map(
 
       function(sig, xclin){
 
+        print(sig)
+
         # Estimate prognosis
         m1_prog <- glm(
-          formula =as.formula(paste("Response ~", sig, "+ Strata")),
+          # formula =as.formula(paste("Response ~", sig, "+ Strata")),
+          # Note that in the formula the term "Strata" combines dataset and arm effect.
+          # Although, using arm and dataset term seperatly would distinguishes the arm amd dataset effect, we
+          # are not interesed in it at this stage.
+          # This model tests the prognostic value of sig irrespective of arm and dataset
+          # Alternative formula:
+          formula = as.formula(
+            switch(subtype,
+                   # For HER2 adjust for HR status
+                   "HER2" = paste("Response ~", sig, "+ Hr + Arm_consolidated + Series_matrix_accession"),
+                   "ALL" = paste("Response ~", sig, "+ Subtype_ihc2 + Arm_consolidated + Series_matrix_accession"),
+                   paste("Response ~", sig, "+ Arm_consolidated + Series_matrix_accession"))
+          ),
+          # formula =as.formula(paste("Response ~", sig, "+ strata(Strata)")),
+          # Both model will give identical p value
+
           data = xclin,
           family = "binomial"
         )
+        # summary(m1_prog)$coefficients
 
         m1_prog_clean <- cbind(
           summary(m1_prog)$coefficients[sig, , drop = F],
@@ -193,6 +313,8 @@ prog_sum <- purrr::map(
 
 
         # Estimate heterogenity
+        # Note that heterogenity assessed w.r.t each strata
+        # For each strata, the prognostic value is assessed and the heterogenity is measured
         m1_het_clean <- estimate_prog_heterogenity(xclin = xclin, sig = sig)
 
 
@@ -224,16 +346,9 @@ prog_sum <- purrr::map(
   clin = clin_neoadj
 )
 
-# There were 24 warnings (use warnings() to see them)
-# Warning messages:
-# 1: glm.fit: algorithm did not converge
-# 2: glm.fit: fitted probabilities numerically 0 or 1 occurred
-# 3: glm.fit: algorithm did not converge
+names(geo_prog) <- c("TN", "HR-HER2+", "HR+HER2+", "HER2", "HR", "ALL")
 
-names(prog_sum) <- c("TN", "HER2", "HR", "ALL")
-
-
-# !!!! Save prog_sum later in the script
+# !!!! Save geo_prog late r in the script
 
 #
 # ==============================================================================
@@ -250,21 +365,34 @@ names(prog_sum) <- c("TN", "HER2", "HR", "ALL")
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 
-# Per-subtype, per-sig study-arm heterogenity assesment
+# Per-subtype, per-sig strata (study-arm) heterogenity assesment
 
-prog_het_sum <- purrr::map(
+geo_prog_het <- purrr::map(
 
-  c("TN", "HER2", "HR", "ALL"),
+  c("TN", "HR-HER2+", "HR+HER2+", "HER2", "HR", "ALL"),
 
   function(subtype, clin){
 
     print(subtype)
 
-    xclin <- switch(
+    xclin <- switch (
       subtype,
+
       ALL = clin,
+
+      HER2 = clin %>%
+        dplyr::filter(Subtype_ihc == subtype),
+
+      "HR+HER2+" = clin %>%
+        dplyr::filter(Subtype_ihc2 == subtype & Strata != "GSE42822:AAA+T+TRA"),
+      # The above strata has only 9 samples with 2 events
+      # If included in analysis, the above strata will throw the following warnings.
+      # Warning messages:
+      # 1: glm.fit: algorithm did not converge
+      # 2: glm.fit: fitted probabilities numerically 0 or 1 occurred
+
       clin %>%
-        dplyr::filter(Subtype_ihc == subtype)
+        dplyr::filter(Subtype_ihc2 == subtype)
     )
 
     # sig = "Immune1"
@@ -274,7 +402,11 @@ prog_het_sum <- purrr::map(
     # Per-subtype, per-sig heterogenity assesment
     xx <- purrr::map(
 
-      c("Immune1", "Immune2", "Immune3",
+      # c("TILsig", "TILsig_imm", "TILsig_fib",
+      c("TILsig_scaled",
+        "TILsig_APP_Fc", "TILsig_Immune", "TILsig_IFNg", #"TILsig_Innate",
+        "TILsig_ECM", "TILsig_Adhesion",
+        "Immune1", "Immune2", "Immune3",
         "Interferon1", "Interferon2", "Interferon3",
         "Cholesterol1", "Cholesterol2", "Cholesterol3",
         "Fibrosis1", "Fibrosis2", "Fibrosis3",
@@ -405,13 +537,17 @@ prog_het_sum <- purrr::map(
       xclin
     )
 
-    names(xx) <- c("Immune1", "Immune2", "Immune3",
-                   "Interferon1", "Interferon2", "Interferon3",
-                   "Cholesterol1", "Cholesterol2", "Cholesterol3",
-                   "Fibrosis1", "Fibrosis2", "Fibrosis3",
-                   "Proliferation1", "Proliferation2", "Proliferation3",
-                   "Tcell", "CLymphocyte", "Bcell",
-                   "NKcell", "Monocyte", "MDendritic", "Fibroblast")
+    # names(xx) <- c("TILsig", "TILsig_imm", "TILsig_fib",
+    names(xx) <-   c("TILsig_scaled",
+                     "TILsig_APP_Fc", "TILsig_Immune", "TILsig_IFNg", #"TILsig_Innate",
+                     "TILsig_ECM", "TILsig_Adhesion",
+                     "Immune1", "Immune2", "Immune3",
+                     "Interferon1", "Interferon2", "Interferon3",
+                     "Cholesterol1", "Cholesterol2", "Cholesterol3",
+                     "Fibrosis1", "Fibrosis2", "Fibrosis3",
+                     "Proliferation1", "Proliferation2", "Proliferation3",
+                     "Tcell", "CLymphocyte", "Bcell",
+                     "NKcell", "Monocyte", "MDendritic", "Fibroblast")
     xx
 
   },
@@ -419,13 +555,7 @@ prog_het_sum <- purrr::map(
   clin = clin_neoadj
 )
 
-# There were 48 warnings (use warnings() to see them)
-# Warning messages:
-# 1: glm.fit: algorithm did not converge
-# 2: glm.fit: fitted probabilities numerically 0 or 1 occurred
-# 3: glm.fit: algorithm did not converge
-
-names(prog_het_sum) <- c("TN", "HER2", "HR", "ALL")
+names(geo_prog_het) <- c("TN", "HR-HER2+", "HR+HER2+", "HER2", "HR", "ALL")
 
 #
 # ==============================================================================
@@ -436,11 +566,11 @@ names(prog_het_sum) <- c("TN", "HER2", "HR", "ALL")
 # 4. Save Robjects
 # ==============================================================================
 
-# prog_sum : Prognosis summary
-save(prog_sum, file = str_c(out_data,"prog_sum.RData"))
+# geo_prog : Prognosis summary
+save(geo_prog, file = str_c(out_data,"geo_prog.RData")) # old name: prog_sum
 
-# prog_het_sum: Prognosis heterogenity summary
-save(prog_het_sum, file = str_c(out_data,"prog_het_sum.RData"))
+# geo_prog_het: Prognosis heterogenity summary
+save(geo_prog_het, file = str_c(out_data,"geo_prog_het.RData")) # old name: prog_sum_het
 
 #
 # ==============================================================================
