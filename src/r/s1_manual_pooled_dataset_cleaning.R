@@ -603,53 +603,65 @@ clin_neoadj <- clin_neoadj %>%
       str_replace("\\+Taxane", "+T") %>%
       str_replace("///", ":"), # GSE..///AAA > GSE...:AAA
 
-    # Added on 3/4/21
-    # Integrate HR status in the the treatment strata for HER2
+    # # Added on 3/4/21
+    # # Integrate HR status in the the treatment strata for HER2
+    # # Objective:
+    # # 1) To asses HR status based difference in response
+    # # 2) Usually in clinics HR+ve samples were given hormone therapy
+    # #     irrespective of HER2 status.
+    # Strata = if_else(Subtype_ihc == "HER2", str_c(Strata,":",Hr), Strata) %>%
+    #   str_replace("pos","HR+") %>%
+    #   str_replace("neg", "HR-")
+
+    # Added on 5/4/21
+    # Reclassify HER2 subtype as HR-HER2+ and HR+HER2+
     # Objective:
     # 1) To asses HR status based difference in response
     # 2) Usually in clinics HR+ve samples were given hormone therapy
     #     irrespective of HER2 status.
-    Strata = if_else(Subtype_ihc == "HER2", str_c(Strata,":",Hr), Strata) %>%
+    Subtype_ihc2 = if_else(Subtype_ihc == "HER2",
+                           str_c(Hr, Subtype_ihc, "+"),
+                           Subtype_ihc) %>%
       str_replace("pos","HR+") %>%
       str_replace("neg", "HR-")
   )
 
 clin_neoadj %>%
-  dplyr::group_by(Subtype_ihc, Hr, Strata) %>%
+  dplyr::group_by(Subtype_ihc, Subtype_ihc2, Strata) %>%
   dplyr::summarise(N = n(), Pcr = Response %>% sum()) %>%
   as.data.frame()
-#    Subtype_ihc  Hr                 Strata   N Pcr
-# 1         HER2 neg     GSE20194:AAA+T:HR-  25  13
-# 2         HER2 neg     GSE32646:AAA+T:HR-  18   9
-# 3         HER2 neg GSE42822:AAA+T+TRA:HR-  15  10
-# 4         HER2 neg     GSE50948:AAA+T:HR-  37   9
-# 5         HER2 neg GSE50948:AAA+T+TRA:HR-  43  25
-# 6         HER2 pos     GSE20194:AAA+T:HR+  25   4
-# 7         HER2 pos     GSE32646:AAA+T:HR+  16   3
-# 8         HER2 pos GSE42822:AAA+T+TRA:HR+   9   2
-# 9         HER2 pos     GSE50948:AAA+T:HR+  14   4
-# 10        HER2 pos GSE50948:AAA+T+TRA:HR+  20   6
-# 11          HR pos         GSE20194:AAA+T 141   9
-# 12          HR pos           GSE20271:AAA  49   3
-# 13          HR pos         GSE20271:AAA+T  44   3
-# 14          HR pos           GSE22093:AAA  42  10
-# 15          HR pos         GSE23988:AAA+T  32   7
-# 16          HR pos         GSE25066:A0A+T  35   3
-# 17          HR pos         GSE25066:AAA+T 194  22
-# 18          HR pos         GSE32646:AAA+T  55   5
-# 19          HR pos         GSE41998:A0A+T 104  12
-# 20          HR pos         GSE42822:AAA+T  29   8
-# 21          HR pos         GSE50948:AAA+T  26   4
-# 22          TN neg         GSE20194:AAA+T  64  25
-# 23          TN neg           GSE20271:AAA  28   4
-# 24          TN neg         GSE20271:AAA+T  31   9
-# 25          TN neg           GSE22093:AAA  55  18
-# 26          TN neg         GSE23988:AAA+T  29  13
-# 27          TN neg         GSE25066:A0A+T  25   6
-# 28          TN neg         GSE25066:AAA+T 119  43
-# 29          TN neg         GSE32646:AAA+T  26  10
-# 30          TN neg         GSE41998:A0A+T 125  51
-# 31          TN neg         GSE42822:AAA+T  24  12
+#    Subtype_ihc Subtype_ihc2             Strata   N Pcr
+# 1         HER2     HR-HER2+     GSE20194:AAA+T  25  13
+# 2         HER2     HR-HER2+     GSE32646:AAA+T  18   9
+# 3         HER2     HR-HER2+ GSE42822:AAA+T+TRA  15  10
+# 4         HER2     HR-HER2+     GSE50948:AAA+T  37   9
+# 5         HER2     HR-HER2+ GSE50948:AAA+T+TRA  43  25
+# 6         HER2     HR+HER2+     GSE20194:AAA+T  25   4
+# 7         HER2     HR+HER2+     GSE32646:AAA+T  16   3
+# 8         HER2     HR+HER2+ GSE42822:AAA+T+TRA   9   2
+# 9         HER2     HR+HER2+     GSE50948:AAA+T  14   4
+# 10        HER2     HR+HER2+ GSE50948:AAA+T+TRA  20   6
+# 11          HR           HR     GSE20194:AAA+T 141   9
+# 12          HR           HR       GSE20271:AAA  49   3
+# 13          HR           HR     GSE20271:AAA+T  44   3
+# 14          HR           HR       GSE22093:AAA  42  10
+# 15          HR           HR     GSE23988:AAA+T  32   7
+# 16          HR           HR     GSE25066:A0A+T  35   3
+# 17          HR           HR     GSE25066:AAA+T 194  22
+# 18          HR           HR     GSE32646:AAA+T  55   5
+# 19          HR           HR     GSE41998:A0A+T 104  12
+# 20          HR           HR     GSE42822:AAA+T  29   8
+# 21          HR           HR     GSE50948:AAA+T  26   4
+# 22          TN           TN     GSE20194:AAA+T  64  25
+# 23          TN           TN       GSE20271:AAA  28   4
+# 24          TN           TN     GSE20271:AAA+T  31   9
+# 25          TN           TN       GSE22093:AAA  55  18
+# 26          TN           TN     GSE23988:AAA+T  29  13
+# 27          TN           TN     GSE25066:A0A+T  25   6
+# 28          TN           TN     GSE25066:AAA+T 119  43
+# 29          TN           TN     GSE32646:AAA+T  26  10
+# 30          TN           TN     GSE41998:A0A+T 125  51
+# 31          TN           TN     GSE42822:AAA+T  24  12
 #
 # ==============================================================================
 
@@ -658,7 +670,6 @@ clin_neoadj %>%
 
 # 6. Save filtered clinical and expression data
 # ========================================================================= =====
-
 
 save(clin_neoadj, file = str_c(out_data,"clin_neoadj.RData"))
 save(expr_neoadj, file = str_c(out_data,"expr_neoadj.RData"))

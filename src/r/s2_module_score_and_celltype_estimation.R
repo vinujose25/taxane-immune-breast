@@ -4,16 +4,16 @@
 # >>>>>>>>>>>>>>>>>>>>>
 # Clean gene-modules of biological processes and celltype (TIL-localization/
 # proliferation/MCPcounter gene modules).
-# Validate cleaned gene modules in TCGA/Metabric (MetaGxBreast).
+# Validate cleaned gene modules in expr_tcga/expr_metabric (MetaGxBreast).
 # Estimate module and celltype scores.
 
 
 
 # Script strucutre
 # >>>>>>>>>>>>>>>>
-# 1. Load data (geo, finher, tcga, metabric)
+# 1. Load data (geo, finher, expr_tcga, expr_metabric)
 # 2. Load, clean, subset gene-modules.
-# 3. Gene-module validation in tcga and metabric.
+# 3. Gene-module validation in expr_tcga and expr_metabric.
 # 4. Compute module-scores and update clin_neoadj.
 # 5. Estimate celltype scores and update clin_neoadj.
 # 6. Additional formating of clinincal data to aid in analysis
@@ -21,18 +21,19 @@
 
 
 
-# 1. Load and prepare data (geo, finher, tcga, metabric)
+# 1. Load and prepare data (geo, finher, expr_tcga, expr_metabric)
 # ==============================================================================
 
 # clinical (to update module sore and celltype estimates)
 load("results/data/clin_neoadj.RData")
 load("results/data/clin_finher.RData")
 
-# expression (to subset original gene modules and validate in tcga/metabric)
+# expression (to subset original gene modules and validate in expr_tcga/expr_metabric)
 load("results/data/expr_neoadj.RData")
 load("results/data/expr_finher.RData")
-# TCGA/METABRIC from metagxbreast R-package
-# Ref: inhouse project "tcga-metabric-metagxbreast" (https://osf.io/jb8za/)
+
+# tcga/metabric from metagxbreast R-package
+# Ref: inhouse project "expr_tcga-expr_metabric-metagxbreast" (https://osf.io/jb8za/)
 load("data/tcga.RData")
 load("data/metabric.RData")
 
@@ -47,8 +48,8 @@ dim(metabric$expr) # [1] 24924  2115
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 expr_neoadj <- expr_neoadj %>% t_tibble(names_x_desc = "Sample_id")
 expr_finher <- expr_finher %>% t_tibble(names_x_desc = "Sample_id")
-tcga <- tcga$expr %>% t_tibble(names_x_desc = "Sample_id")
-metabric <- metabric$expr %>% t_tibble(names_x_desc = "Sample_id")
+expr_tcga <- tcga$expr %>% t_tibble(names_x_desc = "Sample_id")
+expr_metabric <- metabric$expr %>% t_tibble(names_x_desc = "Sample_id")
 
 
 
@@ -66,17 +67,17 @@ expr_finher %>% purrr::map_lgl(~any(is.na(.x))) %>% table() # includes Non-NA Sa
 # 3351
 # expr_finher: No genes with NAs, No genes to discard
 
-tcga %>% purrr::map_lgl(~any(is.na(.x))) %>% table() # includes Non-NA Sample_id
+expr_tcga %>% purrr::map_lgl(~any(is.na(.x))) %>% table() # includes Non-NA Sample_id
 # FALSE
 # 19406
-# tcga: No genes with NAs, No genes to discard
+# expr_tcga: No genes with NAs, No genes to discard
 
-metabric %>% purrr::map_lgl(~any(is.na(.x))) %>% table() # includes Non-NA Sample_id
+expr_metabric %>% purrr::map_lgl(~any(is.na(.x))) %>% table() # includes Non-NA Sample_id
 # FALSE  TRUE
 # 24918     7
-# metabric: 7 genes with NAs, 7 genes to discard
-idx <- metabric %>% purrr::map_lgl(~!any(is.na(.x))) %>% which()
-metabric <- metabric[,idx]
+# expr_metabric: 7 genes with NAs, 7 genes to discard
+idx <- expr_metabric %>% purrr::map_lgl(~!any(is.na(.x))) %>% which()
+expr_metabric <- expr_metabric[,idx]
 
 #
 # ==============================================================================
@@ -85,6 +86,19 @@ metabric <- metabric[,idx]
 
 # 2. Load and, clean gene-modules.
 # ==============================================================================
+
+# tilsig versions
+load("results/data/tilsig_clean.RData")
+load("results/data/tilsig_bp_merged.RData")
+
+tilsig <- c(
+  list(TILsig = tilsig_clean$ALL %>%
+         dplyr::select(Ncbi_gene_id1, Direction) %>%
+         dplyr::rename(Ncbi_gene_id = "Ncbi_gene_id1")),
+  tilsig_bp_merged %>% purrr::map(function(x){x %>% dplyr::mutate(Direction = 1)})
+)
+
+
 
 # gene modules (vectorised)
 module_consolidated <- read_tsv(
@@ -132,6 +146,13 @@ names(module_list) <- module_consolidated$Module_id %>% unique()
 
 
 
+# append tilsig versions
+# >>>>>>>>>>>>>>>>>>>>>>
+
+module_list <- c(tilsig, module_list)
+
+
+
 # Neoadj module subset
 module_list_neoadj <- purrr::map(
   module_list,
@@ -161,40 +182,40 @@ module_list_finher <- purrr::map(
 
 
 
-# 3. Gene-module validation in tcga-metabric.
+# 3. Gene-module validation in expr_tcga-expr_metabric.
 # ==============================================================================
 
 
 # Neoadj module-subset validation
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-# validation on tcga
-validation_neoadj_tcga <- validate_gene_modules(
+# validation on expr_tcga
+validation_neoadj_expr_tcga <- validate_gene_modules(
   module_full_list = module_list,
   module_subset_list = module_list_neoadj,
-  validation_data = tcga)
+  validation_data = expr_tcga)
 
 
-# validation on metabric
-validation_neoadj_metabric <- validate_gene_modules(
+# validation on expr_metabric
+validation_neoadj_expr_metabric <- validate_gene_modules(
   module_full_list = module_list,
   module_subset_list = module_list_neoadj,
-  validation_data = metabric)
+  validation_data = expr_metabric)
 
 
 validation_neoadj_stat <- bind_cols(
-  validation_neoadj_tcga %>%
+  validation_neoadj_expr_tcga %>%
     dplyr::select(Module_id, Module_full_size, Module_subset_size,
                   Module_subset_size_percent),
-  validation_neoadj_tcga %>%
+  validation_neoadj_expr_tcga %>%
     dplyr::select(Pearson, Spearman) %>%
-    dplyr::rename_all(~str_c("tcga_",.x)),
-  validation_neoadj_metabric %>%
+    dplyr::rename_all(~str_c("expr_tcga_",.x)),
+  validation_neoadj_expr_metabric %>%
     dplyr::select(Pearson, Spearman) %>%
-    dplyr::rename_all(~str_c("metabric_",.x))
+    dplyr::rename_all(~str_c("expr_metabric_",.x))
 ) %>%
   dplyr::mutate(
-    Valid_modules = (tcga_Pearson > 0.9 & metabric_Pearson > 0.9),
+    Valid_modules = (expr_tcga_Pearson > 0.9 & expr_metabric_Pearson > 0.9),
     Valid_modules = if_else(is.na(Valid_modules), FALSE, Valid_modules)
   )
 
@@ -203,39 +224,39 @@ validation_neoadj_stat <- bind_cols(
 # FinHER module-subset validation
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-# validation on tcga
-validation_finher_tcga <- validate_gene_modules(
+# validation on expr_tcga
+validation_finher_expr_tcga <- validate_gene_modules(
   module_full_list = module_list,
   module_subset_list = module_list_finher,
-  validation_data = tcga)
+  validation_data = expr_tcga)
 
-# validation in metabric
-validation_finher_metabric <- validate_gene_modules(
+# validation in expr_metabric
+validation_finher_expr_metabric <- validate_gene_modules(
   module_full_list = module_list,
   module_subset_list = module_list_finher,
-  validation_data = metabric)
+  validation_data = expr_metabric)
 
 
 validation_finher_stat <- bind_cols(
-  validation_finher_tcga %>%
+  validation_finher_expr_tcga %>%
     dplyr::select(Module_id, Module_full_size, Module_subset_size,
                   Module_subset_size_percent),
-  validation_finher_tcga %>%
+  validation_finher_expr_tcga %>%
     dplyr::select(Pearson, Spearman) %>%
-    dplyr::rename_all(~str_c("tcga_",.x)),
-  validation_finher_metabric %>%
+    dplyr::rename_all(~str_c("expr_tcga_",.x)),
+  validation_finher_expr_metabric %>%
     dplyr::select(Pearson, Spearman) %>%
-    dplyr::rename_all(~str_c("metabric_",.x))
+    dplyr::rename_all(~str_c("expr_metabric_",.x))
 ) %>%
   dplyr::mutate(
-    Valid_modules = (tcga_Pearson > 0.9 & metabric_Pearson > 0.9),
+    Valid_modules = (expr_tcga_Pearson > 0.9 & expr_metabric_Pearson > 0.9),
     Valid_modules = if_else(is.na(Valid_modules), FALSE, Valid_modules)
   )
 
 # cleaning
-rm(validation_neoadj_tcga, validation_neoadj_metabric)
-rm(validation_finher_tcga, validation_finher_metabric)
-rm(tcga, metabric)
+rm(validation_neoadj_expr_tcga, validation_neoadj_expr_metabric)
+rm(validation_finher_expr_tcga, validation_finher_expr_metabric)
+rm(expr_tcga, expr_metabric)
 
 #
 # ==============================================================================
@@ -254,11 +275,11 @@ nme <- validation_neoadj_stat %>%
   dplyr::filter(Valid_modules) %>%
   dplyr::select(Module_id) %>%
   tibble::deframe()
-# 33 valid modules out of 36
+# 39 valid modules out of 43
 
 
 # Module-score
-score <- get_module_score(
+score <- get_module_score_2(
   x = expr_neoadj,
   module_list = module_list_neoadj[nme],
   by = "Ncbi_gene_id"
@@ -284,7 +305,7 @@ nme <- validation_finher_stat %>%
 
 
 # Module-score
-score <- get_module_score(
+score <- get_module_score_2(
   x = expr_finher,
   module_list = module_list_finher[nme],
   by = "Ncbi_gene_id"
@@ -409,58 +430,73 @@ clin_finher <- clin_finher %>%
 clin_neoadj <- clin_neoadj %>%
   dplyr::mutate(
     # Renaming by preserving original variables
-    Immune1 = Gruosso_2019_Immune.cdsig1,
-    Immune2 = Hamy_2016_Immune,
-    Immune3 = Desmedt_2008_Immune,
-    Interferon1 = Gruosso_2019_Interferon.edsig2,
-    Interferon2 = Hamy_2016_Interferon,
-    Interferon3 = Nirmal_2018_Interferon,
-    Cholesterol1 = Gruosso_2019_Cholesterol.edsig5,
-    Cholesterol2 = Sorrentino_2014_Cholesterol.mevalonate,
-    Cholesterol3 = Simigdala_2016_Cholesterol,
-    Fibrosis1 = Gruosso_2019_Fibrosis.cdsig3,
-    Fibrosis2 = Hamy_2016_Ecm,
-    Fibrosis3 = Triulzi_2013_Ecm,
-    Proliferation1 = Desmedt_2008_Proliferation,
-    Proliferation2 = Yang_2018_Proliferation,
-    Proliferation3 = Nirmal_2018_Proliferation,
-    Tcell = MCPcounter_T.Cells,
-    CLymphocyte = MCPcounter_Cytotoxic.Lymphocytes,
-    Bcell = MCPcounter_B.Lineage,
-    NKcell = MCPcounter_Nk.Cells,
-    Monocyte = MCPcounter_Monocytic.Lineage,
-    MDendritic = MCPcounter_Myeloid.Dendritic.Cells,
+    TILsig_scaled = TILsig %>% genefu::rescale(q = 0.05),
+    TILsig_APP_Fc = APP_Fc %>% genefu::rescale(q = 0.05),
+    TILsig_Immune = Immune %>% genefu::rescale(q = 0.05),
+    TILsig_IFNg = IFN_gamma %>% genefu::rescale(q = 0.05),
+    TILsig_ECM = ECM %>% genefu::rescale(q = 0.05),
+    TILsig_Adhesion = Adhesion %>% genefu::rescale(q = 0.05),
+    Immune1 = Gruosso_2019_Immune.cdsig1 %>% genefu::rescale(q = 0.05),
+    Immune2 = Hamy_2016_Immune %>% genefu::rescale(q = 0.05),
+    # Immune3 = Desmedt_2008_Immune %>% genefu::rescale(q = 0.05),
+    Immune3 = Yang_2018_Immune %>% genefu::rescale(q = 0.05),
+    Interferon1 = Gruosso_2019_Interferon.edsig2 %>% genefu::rescale(q = 0.05),
+    Interferon2 = Hamy_2016_Interferon %>% genefu::rescale(q = 0.05),
+    Interferon3 = Nirmal_2018_Interferon %>% genefu::rescale(q = 0.05),
+    Cholesterol1 = Gruosso_2019_Cholesterol.edsig5 %>% genefu::rescale(q = 0.05),
+    Cholesterol2 = Sorrentino_2014_Cholesterol.mevalonate %>% genefu::rescale(q = 0.05),
+    Cholesterol3 = Simigdala_2016_Cholesterol %>% genefu::rescale(q = 0.05),
+    Fibrosis1 = Gruosso_2019_Fibrosis.cdsig3 %>% genefu::rescale(q = 0.05),
+    Fibrosis2 = Hamy_2016_Ecm %>% genefu::rescale(q = 0.05),
+    Fibrosis3 = Triulzi_2013_Ecm %>% genefu::rescale(q = 0.05),
+    Proliferation1 = Desmedt_2008_Proliferation %>% genefu::rescale(q = 0.05),
+    Proliferation2 = Yang_2018_Proliferation %>% genefu::rescale(q = 0.05),
+    Proliferation3 = Nirmal_2018_Proliferation %>% genefu::rescale(q = 0.05),
+    Tcell = MCPcounter_T.Cells %>% genefu::rescale(q = 0.05),
+    CLymphocyte = MCPcounter_Cytotoxic.Lymphocytes %>% genefu::rescale(q = 0.05),
+    Bcell = MCPcounter_B.Lineage %>% genefu::rescale(q = 0.05),
+    NKcell = MCPcounter_Nk.Cells %>% genefu::rescale(q = 0.05),
+    Monocyte = MCPcounter_Monocytic.Lineage %>% genefu::rescale(q = 0.05),
+    MDendritic = MCPcounter_Myeloid.Dendritic.Cells %>% genefu::rescale(q = 0.05),
     # Endothelial = Becht_2016_Endothelial.Cells, # reliable but irrelevant !!!
-    Fibroblast = MCPcounter_Fibroblasts
+    Fibroblast = MCPcounter_Fibroblasts %>% genefu::rescale(q = 0.05)
   )
 
 
 clin_finher <- clin_finher %>%
   dplyr::mutate(
     # Renaming by preserving original variables
-    Immune1 = Gruosso_2019_Immune.cdsig1,
-    Immune2 = Hamy_2016_Immune,
-    Immune3 = Desmedt_2008_Immune,
-    Interferon1 = Gruosso_2019_Interferon.edsig2,
-    Interferon2 = Hamy_2016_Interferon,
-    Interferon3 = Nirmal_2018_Interferon,
+    TILsig_scaled = TILsig %>% genefu::rescale(q = 0.05),
+    TILsig_APP_Fc = APP_Fc %>% genefu::rescale(q = 0.05),
+    TILsig_Immune = Immune %>% genefu::rescale(q = 0.05),
+    TILsig_IFNg = IFN_gamma %>% genefu::rescale(q = 0.05),
+    TILsig_Innate = Innate %>% genefu::rescale(q = 0.05),
+    TILsig_ECM = ECM %>% genefu::rescale(q = 0.05),
+    TILsig_Adhesion = Adhesion %>% genefu::rescale(q = 0.05),
+    Immune1 = Gruosso_2019_Immune.cdsig1 %>% genefu::rescale(q = 0.05),
+    Immune2 = Hamy_2016_Immune %>% genefu::rescale(q = 0.05),
+    # Immune3 = Desmedt_2008_Immune %>% genefu::rescale(q = 0.05),
+    Immune3 = Yang_2018_Immune %>% genefu::rescale(q = 0.05),
+    Interferon1 = Gruosso_2019_Interferon.edsig2 %>% genefu::rescale(q = 0.05),
+    Interferon2 = Hamy_2016_Interferon %>% genefu::rescale(q = 0.05),
+    Interferon3 = Nirmal_2018_Interferon %>% genefu::rescale(q = 0.05),
     # Cholesterol1 = Gruosso_2019_Cholesterol.edsig5, # unreliable !!!
-    Cholesterol2 = Sorrentino_2014_Cholesterol.mevalonate,
+    Cholesterol2 = Sorrentino_2014_Cholesterol.mevalonate %>% genefu::rescale(q = 0.05),
     # Cholesterol3 = Simigdala_2016_Cholesterol, # unreliable !!!
-    Fibrosis1 = Gruosso_2019_Fibrosis.cdsig3,
-    Fibrosis2 = Hamy_2016_Ecm,
-    Fibrosis3 = Triulzi_2013_Ecm,
-    Proliferation1 = Desmedt_2008_Proliferation,
-    Proliferation2 = Yang_2018_Proliferation,
-    Proliferation3 = Nirmal_2018_Proliferation,
-    Tcell = MCPcounter_T.Cells,
+    Fibrosis1 = Gruosso_2019_Fibrosis.cdsig3 %>% genefu::rescale(q = 0.05),
+    Fibrosis2 = Hamy_2016_Ecm %>% genefu::rescale(q = 0.05),
+    Fibrosis3 = Triulzi_2013_Ecm %>% genefu::rescale(q = 0.05),
+    Proliferation1 = Desmedt_2008_Proliferation %>% genefu::rescale(q = 0.05),
+    Proliferation2 = Yang_2018_Proliferation %>% genefu::rescale(q = 0.05),
+    Proliferation3 = Nirmal_2018_Proliferation %>% genefu::rescale(q = 0.05),
+    Tcell = MCPcounter_T.Cells %>% genefu::rescale(q = 0.05),
     # CLymphocyte = MCPcounter_Cytotoxic.Lymphocytes, # unreliable !!!
     # Bcell = MCPcounter_B.Lineage, # unreliable !!!
     # NKcell = MCPcounter_Nk.Cells, # unreliable !!!
     # Monocyte = MCPcounter_Monocytic.Lineage, # unreliable !!!
     # MDendritic = MCPcounter_Myeloid.Dendritic.Cells, # unreliable !!!
     # Endothelial = Becht_2016_Endothelial.Cells, # unreliable and irrelevant !!!
-    Fibroblast = MCPcounter_Fibroblasts
+    Fibroblast = MCPcounter_Fibroblasts %>% genefu::rescale(q = 0.05)
   )
 
 
@@ -489,4 +525,4 @@ save(clin_neoadj, file = str_c(out_data, "clin_neoadj.RData"))
 save(clin_finher, file = str_c(out_data, "clin_finher.RData"))
 
 #
-# ==============================================================================
+# ====================================================  ==========================

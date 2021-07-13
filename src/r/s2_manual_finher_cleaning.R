@@ -147,7 +147,10 @@ clin %>%
 # 9 NVB   Yes       Positive    30
 # 10 NVB   NA        Negative    60 # TN
 # Suggested change !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# Integrate Chemo Herceptin HR_IHC into a single variable Arm !!!!!!!!!!!!!!!!!
+# Chemo: keep intact
+# Herceptin: No/NA as noTRA, NA are set to noTRA for later grouping of samples
+# introduce Hormone: as HR for Positive and noHR for Negative
+# Obsolete: Integrate Chemo Herceptin HR_IHC into a single variable Arm !!!!!!!!!!!!!!!!!
 
 
 # Implement suggested changes to clin
@@ -155,33 +158,26 @@ clin %>%
 clin <- clin %>%
   dplyr::mutate(
     Grade = if_else(Grade == "Grade1", "Grade2", Grade),
-    tmp_Herceptin = if_else(Herceptin %>% is.na(), "No", Herceptin),
-    Arm = str_c(
-      "FEC_", Chemo,
-      if_else(tmp_Herceptin == "No", "", "_TRA"),
-      if_else(HR_IHC == "Negative", "", "_Hormone")
-    )
-  ) %>%
-  dplyr::select(-tmp_Herceptin)
+    Herceptin = if_else( (is.na(Herceptin) | Herceptin == "No"), "noTRA", "TRA"),
+    Hormone = if_else( HR_IHC == "Negative", "noHR", "HR"),
+  )
 
 clin$Grade %>% table()
 # Grade2 Grade3
 # 84    208
 
 clin %>%
-  dplyr::group_by(Chemo, Herceptin, HR_IHC, Arm) %>%
+  dplyr::group_by(Chemo, Herceptin, Hormone) %>%
   dplyr::summarise(N = n())
-#   Chemo Herceptin HR_IHC   Arm                     N
-# 1 DTX   No        Negative FEC_DTX                27
-# 2 DTX   No        Positive FEC_DTX_Hormone        18
-# 3 DTX   Yes       Negative FEC_DTX_TRA            26
-# 4 DTX   Yes       Positive FEC_DTX_TRA_Hormone    16
-# 5 DTX   NA        Negative FEC_DTX                60 # TN
-# 6 NVB   No        Negative FEC_NVB                19
-# 7 NVB   No        Positive FEC_NVB_Hormone        27
-# 8 NVB   Yes       Negative FEC_NVB_TRA            17
-# 9 NVB   Yes       Positive FEC_NVB_TRA_Hormone    30
-# 10 NVB   NA        Negative FEC_NVB                60 # TN
+#   Chemo Herceptin Hormone     N
+# 1 DTX   noTRA     HR         18
+# 2 DTX   noTRA     noHR       87 # TN + HER2
+# 3 DTX   TRA       HR         16
+# 4 DTX   TRA       noHR       26
+# 5 NVB   noTRA     HR         27
+# 6 NVB   noTRA     noHR       79 # TN + HER2
+# 7 NVB   TRA       HR         30
+# 8 NVB   TRA       noHR       17
 
 #
 # ==============================================================================
@@ -192,32 +188,32 @@ clin %>%
 # ==============================================================================
 
 clin %>%
-  dplyr::group_by(Subtype_IHC, Subtype_IHC_2, Arm) %>%
+  dplyr::group_by(Subtype_IHC, Subtype_IHC_2, Arm = str_c(Chemo,"+",Herceptin,"+",Hormone)) %>%
   dplyr::summarise(N = n())
-# Subtype_IHC Subtype_IHC_2 Arm                     N
-# 1 HR-HER2+    HER2          FEC_DTX                27
-# 2 HR-HER2+    HER2          FEC_DTX_TRA            26
-# 3 HR-HER2+    HER2          FEC_NVB                19
-# 4 HR-HER2+    HER2          FEC_NVB_TRA            17
+#   Subtype_IHC Subtype_IHC_2 Arm                N
+# 1 HR-HER2+    HER2          DTX+noTRA+noHR    27
+# 2 HR-HER2+    HER2          DTX+TRA+noHR      26
+# 3 HR-HER2+    HER2          NVB+noTRA+noHR    19
+# 4 HR-HER2+    HER2          NVB+TRA+noHR      17
 
-# 5 HR+HER2+    HER2          FEC_DTX_Hormone        18
-# 6 HR+HER2+    HER2          FEC_DTX_TRA_Hormone    16
-# 7 HR+HER2+    HER2          FEC_NVB_Hormone        27
-# 8 HR+HER2+    HER2          FEC_NVB_TRA_Hormone    30
+# 5 HR+HER2+    HER2          DTX+noTRA+HR      18
+# 6 HR+HER2+    HER2          DTX+TRA+HR        16
+# 7 HR+HER2+    HER2          NVB+noTRA+HR      27
+# 8 HR+HER2+    HER2          NVB+TRA+HR        30
 
-# 9 TN          TN            FEC_DTX                60
-# 10 TN          TN            FEC_NVB                60
+# 9 TN          TN            DTX+noTRA+noHR    60
+# 10 TN          TN            NVB+noTRA+noHR    60
 
 
 
 # HR-HER2+
 # >>>>>>>>
 
-# Subtype_IHC Subtype_IHC_2 Arm                     N
-# 1 HR-HER2+    HER2          FEC_DTX                27
-# 2 HR-HER2+    HER2          FEC_DTX_TRA            26
-# 3 HR-HER2+    HER2          FEC_NVB                19
-# 4 HR-HER2+    HER2          FEC_NVB_TRA            17
+#   Subtype_IHC Subtype_IHC_2 Arm                     N
+# 1 HR-HER2+    HER2          DTX+noTRA+noHR    27
+# 2 HR-HER2+    HER2          DTX+TRA+noHR      26
+# 3 HR-HER2+    HER2          NVB+noTRA+noHR    19
+# 4 HR-HER2+    HER2          NVB+TRA+noHR      17
 
 # DTX|NVB interaction
 # 1) FEC * DTX|NVB interaction
@@ -234,11 +230,11 @@ clin %>%
 # HR+HER2+
 # >>>>>>>>
 
-# Subtype_IHC Subtype_IHC_2 Arm                     N
-# 5 HR+HER2+    HER2          FEC_DTX_Hormone        18
-# 6 HR+HER2+    HER2          FEC_DTX_TRA_Hormone    16
-# 7 HR+HER2+    HER2          FEC_NVB_Hormone        27
-# 8 HR+HER2+    HER2          FEC_NVB_TRA_Hormone    30
+#   Subtype_IHC Subtype_IHC_2 Arm                     N
+# 5 HR+HER2+    HER2          DTX+noTRA+HR      18
+# 6 HR+HER2+    HER2          DTX+TRA+HR        16
+# 7 HR+HER2+    HER2          NVB+noTRA+HR      27
+# 8 HR+HER2+    HER2          NVB+TRA+HR        30
 
 # DTX|NVB interaction
 # 1) FEC + Hormone * DTX|NVB interaction
@@ -256,15 +252,15 @@ clin %>%
 # >>>>>
 
 # Subtype_IHC Subtype_IHC_2 Arm                     N
-# 1 HR-HER2+    HER2          FEC_DTX                27
-# 2 HR-HER2+    HER2          FEC_DTX_TRA            26
-# 3 HR-HER2+    HER2          FEC_NVB                19
-# 4 HR-HER2+    HER2          FEC_NVB_TRA            17
+# 1 HR-HER2+    HER2          DTX+noTRA+noHR    27
+# 2 HR-HER2+    HER2          DTX+TRA+noHR      26
+# 3 HR-HER2+    HER2          NVB+noTRA+noHR    19
+# 4 HR-HER2+    HER2          NVB+TRA+noHR      17
 
-# 5 HR+HER2+    HER2          FEC_DTX_Hormone        18
-# 6 HR+HER2+    HER2          FEC_DTX_TRA_Hormone    16
-# 7 HR+HER2+    HER2          FEC_NVB_Hormone        27
-# 8 HR+HER2+    HER2          FEC_NVB_TRA_Hormone    30
+# 5 HR+HER2+    HER2          DTX+noTRA+HR      18
+# 6 HR+HER2+    HER2          DTX+TRA+HR        16
+# 7 HR+HER2+    HER2          NVB+noTRA+HR      27
+# 8 HR+HER2+    HER2          NVB+TRA+HR        30
 
 # DTX|NVB interaction
 # 1) FEC + stratified Hormone * DTX|NVB interaction
@@ -282,8 +278,9 @@ clin %>%
 # >>>
 
 # Subtype_IHC Subtype_IHC_2 Arm                     N
-# 9 TN          TN            FEC_DTX                60
-# 10 TN          TN            FEC_NVB                60
+# 9 TN          TN            DTX+noTRA+noHR    60
+# 10 TN          TN            NVB+noTRA+noHR    60
+
 
 
 # DTX|NVB interaction
@@ -295,14 +292,15 @@ clin %>%
 # TN + HER2+(HR-)
 # >>>>>>>>>>>>>>>
 
-# Subtype_IHC Subtype_IHC_2 Arm                     N
-# 1 HR-HER2+    HER2          FEC_DTX                27
-# 2 HR-HER2+    HER2          FEC_DTX_TRA            26
-# 3 HR-HER2+    HER2          FEC_NVB                19
-# 4 HR-HER2+    HER2          FEC_NVB_TRA            17
+#   Subtype_IHC Subtype_IHC_2 Arm                N
+# 1 HR-HER2+    HER2          DTX+noTRA+noHR    27
+# 2 HR-HER2+    HER2          DTX+TRA+noHR      26
+# 3 HR-HER2+    HER2          NVB+noTRA+noHR    19
+# 4 HR-HER2+    HER2          NVB+TRA+noHR      17
 
-# 9 TN          TN            FEC_DTX                60
-# 10 TN          TN            FEC_NVB                60
+# 9 TN          TN            DTX+noTRA+noHR    60
+# 10 TN          TN            NVB+noTRA+noHR    60
+
 
 # TN/HER2 interaction
 # 1) FEC + DTX * TN/HER2 interaction !!! Identical to GEO analysis, AAA + T * TN/HER2
@@ -314,14 +312,15 @@ clin %>%
 # TN + HER2+(HR+)
 # >>>>>>>>>>>>>>>
 
-# Subtype_IHC Subtype_IHC_2 Arm                     N
-# 5 HR+HER2+    HER2          FEC_DTX_Hormone        18
-# 6 HR+HER2+    HER2          FEC_DTX_TRA_Hormone    16
-# 7 HR+HER2+    HER2          FEC_NVB_Hormone        27
-# 8 HR+HER2+    HER2          FEC_NVB_TRA_Hormone    30
+#   Subtype_IHC Subtype_IHC_2 Arm                N
+# 5 HR+HER2+    HER2          DTX+noTRA+HR      18
+# 6 HR+HER2+    HER2          DTX+TRA+HR        16
+# 7 HR+HER2+    HER2          NVB+noTRA+HR      27
+# 8 HR+HER2+    HER2          NVB+TRA+HR        30
 
-# 9 TN          TN            FEC_DTX                60
-# 10 TN          TN            FEC_NVB                60
+# 9 TN          TN            DTX+noTRA+noHR    60
+# 10 TN          TN            NVB+noTRA+noHR    60
+
 
 # TN/HER2 interaction
 # 1) FEC + Hormone + DTX * TN/HER2 interaction
@@ -334,19 +333,20 @@ clin %>%
 # TN + HER2+
 # >>>>>>>>>>
 
-# Subtype_IHC Subtype_IHC_2 Arm                     N
-# 1 HR-HER2+    HER2          FEC_DTX                27
-# 2 HR-HER2+    HER2          FEC_DTX_TRA            26
-# 3 HR-HER2+    HER2          FEC_NVB                19
-# 4 HR-HER2+    HER2          FEC_NVB_TRA            17
+#   Subtype_IHC Subtype_IHC_2 Arm                N
+# 1 HR-HER2+    HER2          DTX+noTRA+noHR    27
+# 2 HR-HER2+    HER2          DTX+TRA+noHR      26
+# 3 HR-HER2+    HER2          NVB+noTRA+noHR    19
+# 4 HR-HER2+    HER2          NVB+TRA+noHR      17
 
-# 5 HR+HER2+    HER2          FEC_DTX_Hormone        18
-# 6 HR+HER2+    HER2          FEC_DTX_TRA_Hormone    16
-# 7 HR+HER2+    HER2          FEC_NVB_Hormone        27
-# 8 HR+HER2+    HER2          FEC_NVB_TRA_Hormone    30
+# 5 HR+HER2+    HER2          DTX+noTRA+HR      18
+# 6 HR+HER2+    HER2          DTX+TRA+HR        16
+# 7 HR+HER2+    HER2          NVB+noTRA+HR      27
+# 8 HR+HER2+    HER2          NVB+TRA+HR        30
 
-# 9 TN          TN            FEC_DTX                60
-# 10 TN          TN            FEC_NVB                60
+# 9 TN          TN            DTX+noTRA+noHR    60
+# 10 TN          TN            NVB+noTRA+noHR    60
+
 
 
 # TN/HER2 interaction (no TRA)
