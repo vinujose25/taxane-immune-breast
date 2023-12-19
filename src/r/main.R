@@ -97,6 +97,13 @@ library(survminer) # ggsurvplot()
 library(grid) # unit()
 library(survcomp) # combine.test()
 library(pROC) # auc
+library(ggh4x) # guide_stringlegend(),
+library(GOfuncR) # get_anno_genes()
+library(Homo.sapiens) # to support GOfuncR::get_anno_genes()
+
+library(coxphf) # suggested by Stefan
+library(logistf) # suggested by Stefan
+
 
 # library(ggsci) # scale_color_jco() Ref : https://www.datanovia.com/en/blog/ggplot-colors-best-tricks-you-will-love/#:~:text=In%20this%20case%2C%20we'll,that%20are%20color%2Dblind%20friendly.
 
@@ -118,13 +125,55 @@ source("src/r/functions.R")
 # The keyword "manual" in script filename implies that some part of the script
 # requires manual cleaning/formatting/curation etc.
 
+
+# @@@@ Updated !!!
 # main.R:
 #       This script !!!!!!!
 #       Main script from which other scripts are managed.
 # functions.R:
 #       Supporting functions for main and other scripts.
 #       Sourced under "Library" section.
-# s1_pooled_dataset_cleaning.R:
+# s1_manual_pooled_dataset_cleaning.R:
+#       Filter pooled dataset based on the criteria specified in the text.
+# s2_manual_finher_dataset_cleaning.R:
+#       Clean finher dataset based on the criteria specified in the text.
+# s3_pub_gene_module_processing.R # gruossoTILloc_generalTIL_control.R
+# s4_denovo_gene_module_generation.R
+
+# !!!!!!!!!!!!!!
+#       s3_TIL_localization_modules.R
+#       s4_TIL_modules.R
+#       s5_General_modules_representing_TIL_associated_BP.R
+#       s6_Celltype_estimation.R
+#       s7_Control_modules.R
+# !!!!!!!!!!!!
+
+# s3_finher_tilsig.R: (! RENAME finher_tilsig.R)
+#       De-novo TILsig generation.
+# s4_module_score_and_celltype_estimation.R: (! RENAME s2_module_score_and_celltype_estimation.R)
+#       Clean gene-modules of biological processes and celltype.
+#       Validate the cleaned gene-modules using TCGA/METABRIC(MeatGxBreast) datasets.
+#       Jaccard-index, Co-correlation heatmaps.
+#       Justify redundant signature use or merge signatures.
+#       Estimate module and celltype scores.
+# s3_exploring_prognosis.R:
+#       Prognosis and heterogenity testing.
+# s4_exploring_interaction.R:
+#       Interaction and heterogenity testing.
+# s5_figures_tables_data.R:
+#       Generate journal specific figures, tables and dataset.
+# manuscript.Rmd:
+#       Rmarkdown version of final manuscript.
+
+
+# @@@@ Backup old !!!
+# main.R:
+#       This script !!!!!!!
+#       Main script from which other scripts are managed.
+# functions.R:
+#       Supporting functions for main and other scripts.
+#       Sourced under "Library" section.
+# s1_manual_pooled_dataset_cleaning.R:
 #       Filter pooled dataset based on the criteria specified in the text.
 # tilsig.R
 # s2_module_score_and_celltype_estimation.R:
@@ -139,6 +188,11 @@ source("src/r/functions.R")
 #       Generate journal specific figures, tables and dataset.
 # manuscript.Rmd:
 #       Rmarkdown version of final manuscript.
+
+
+
+
+
 
 #
 # ==============================================================================

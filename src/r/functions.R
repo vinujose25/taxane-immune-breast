@@ -1,7 +1,10 @@
 # functions.R
 
 
-filter_data <- function(x, type = "filter_data"){
+filter_data <- function(
+  x,
+  type = "filter_data"
+){
 
   # What the function does?
   # Filters data accrording to the criteria mentioned in the manuscript.
@@ -37,10 +40,10 @@ filter_data <- function(x, type = "filter_data"){
   # f) Discard treatment regimens with sample size less than 50 per subtype, and
   # g) Discard treatment regimens with samples only from a single study per subtype,
 
-# Note:
-# Less than 20 samples will crreate convergense issue and
-# large variance in estimates which are problematic in prognosis, interaction
-# and heterogenisty assesments
+  # Note:
+  # Less than 20 samples will crreate convergense issue and
+  # large variance in estimates which are problematic in prognosis, interaction
+  # and heterogenisty assesments
 
 
   # x: clinical data tibble
@@ -140,8 +143,8 @@ filter_data <- function(x, type = "filter_data"){
     dplyr::group_by(Arm_consolidated, Series_matrix_accession) %>%
     dplyr::summarise(n_samp = n(), .groups = "keep") %>%
     # dplyr::filter(n_samp < 10) # old cutoff
-  dplyr::filter(n_samp < 20) # recommanded
-    # dplyr::filter(n_samp < 15) # test
+    dplyr::filter(n_samp < 20) # recommanded
+  # dplyr::filter(n_samp < 15) # test
 
   cat(
     type,
@@ -229,7 +232,10 @@ filter_data <- function(x, type = "filter_data"){
 
 # Note: Copied from treatment-curated-breast-dataset/src/r/functions.R
 # updated t_tibble()
-t_tibble <- function(x, names_x_desc = NULL){
+t_tibble <- function(
+  x,
+  names_x_desc = NULL
+){
 
   # What this function does?
   # >>>>>>>>>>>>>>>>>>>>>>>>
@@ -278,8 +284,12 @@ t_tibble <- function(x, names_x_desc = NULL){
 }
 
 
+
 # Note: Copied from treatment-curated-breast-dataset/src/r/functions.R
-get_module_score <- function(x, module_list, by = "Entrez_Gene"){
+get_module_score <- function(
+  x,
+  module_list, by = "Entrez_Gene"
+){
 
   # What this function does?
   # >>>>>>>>>>>>>>>>>>>>>>>>
@@ -313,7 +323,7 @@ get_module_score <- function(x, module_list, by = "Entrez_Gene"){
     module_list,
     function(sig, xdata, by){
 
-      sig <- sig %>%
+        sig <- sig %>%
         dplyr::filter_at(
           by,
           dplyr::all_vars(. %in% names(xdata))
@@ -325,7 +335,6 @@ get_module_score <- function(x, module_list, by = "Entrez_Gene"){
           c(names(xdata)[1],
             sig %>% dplyr::select(by) %>% tibble::deframe())
         )
-
 
       score <- (xdata %>% dplyr::select(-1) %>% as.matrix()) %*% (sig %>% dplyr::select(Direction) %>% as.matrix())
 
@@ -341,9 +350,14 @@ get_module_score <- function(x, module_list, by = "Entrez_Gene"){
 
 }
 
+
+
 # Note: "averaged the expression of positively and negatively associated genes
 # independently and computed their differences"
-get_module_score_2 <- function(x, module_list, by = "Entrez_Gene"){
+get_module_score_2 <- function(
+  x,
+  module_list, by = "Entrez_Gene"
+){
 
   # What this function does?
   # >>>>>>>>>>>>>>>>>>>>>>>>
@@ -403,14 +417,14 @@ get_module_score_2 <- function(x, module_list, by = "Entrez_Gene"){
       }
 
       if(nrow(sig_dn) >= 1){
-      xdata_dn <- xdata %>%
-        dplyr::select(
-          c(names(xdata)[1],
-            sig_dn %>% dplyr::select(by) %>% tibble::deframe())
-        )
-      score_dn <- (xdata_dn %>% dplyr::select(-1) %>% as.matrix()) %*% (sig_dn %>% dplyr::select(Direction) %>% as.matrix())
-      # score/nrow(sig) # this old code generates matrix
-      score_dn <- as.numeric(score_dn/nrow(sig_dn))
+        xdata_dn <- xdata %>%
+          dplyr::select(
+            c(names(xdata)[1],
+              sig_dn %>% dplyr::select(by) %>% tibble::deframe())
+          )
+        score_dn <- (xdata_dn %>% dplyr::select(-1) %>% as.matrix()) %*% (sig_dn %>% dplyr::select(Direction) %>% as.matrix())
+        # score/nrow(sig) # this old code generates matrix
+        score_dn <- as.numeric(score_dn/nrow(sig_dn))
       } else {
         score_dn <- 0
       }
@@ -429,8 +443,227 @@ get_module_score_2 <- function(x, module_list, by = "Entrez_Gene"){
 }
 
 
+# updated on 26 mar 2022
+
+
+# Functions
+
+module_gene_overlap <- function(
+
+  lst # list of modules for which gene overlap is to be measured
+
+){
+
+  # lst = tilsig_bp
+
+  # Overlap data frame
+  odf <- matrix(data = NA, nrow = length(lst), ncol = length(lst)) %>%
+    as.data.frame()
+  rownames(odf) = names(lst)
+  colnames(odf) = names(lst)
+
+  for(irow in names(lst)){
+    for(icol in names(lst)){
+      odf[irow, icol] =
+        (intersect(lst[[irow]]$Ncbi_gene_id, lst[[icol]]$Ncbi_gene_id) %>% length()) /
+        (nrow(lst[[irow]]))
+      # odf[irow, icol] contains proportion of "irow" sig genes present in "icol" sig
+    }
+  }
+
+  odf <- odf %>%
+    tibble::as_tibble(rownames = "Module_name") %>%
+    dplyr::mutate(Module_name2 = str_c(names(lst)," (",purrr::map_int(lst, nrow),")") ) %>%
+    dplyr::select(c(Module_name, Module_name2), !c(Module_name, Module_name2))
+
+  return(odf)
+
+  # odf interpretation:
+  # each row contains proportion of row signature genes present in column signature
+}
+
+
+module_gene_overlap_plot <- function(
+
+  module_overlap, # output from module_gene_overlap()
+  overlap_col,    # char vector of heatmap color in the order of low, mid, high
+  module_label,   # alternative names to use in axis annotation
+  module_group,   # char vector of module group name, preserve module order as of module_overlap df
+  module_group_col, # char vector of module group color, preserve order
+  module_group_vline = NULL, # xintercept for vlines to group heatmap
+  module_group_hline = NULL, # yintercept for hlines to group heatmap
+  module_group_legend_rows = 4, # module_group_col legend row setting
+  line_col = "gray30",
+  ticksize.x = 5,
+  ticksize.y = 4.5,
+  angle = 45, # x axis angle
+  axis.text.size = 7.5,
+  axis.text.x.vjust = 1, # x axis text justification
+  plotarea_text_size = 2
+
+){
+
+  # module_overlap = module_overlap
+  # overlap_col = c(low = "gold", mid = "white", high = "blue")
+  # module_label = module_annot$Module_name2
+  # module_group = module_annot$Module_group
+  # module_group_col = module_annot$Module_group_col
+  # module_group_vline = c(0.5, 8.5,10.5)
+  # module_group_hline = c(0.5, 8.5,10.5)
+  # line_col = "gray30"
+  # ticksize.x = 5
+  # ticksize.y = 4.5
+  # angle = 45
+  # axis.text.x.vjust = 1
+  # plotarea_text_size = 2
+
+
+  if(!identical(module_overlap$Module_name2, module_label)){
+    stop("module_label and module_overlap order not identical.")
+  }
+
+
+  ggdf <- module_overlap %>%
+    tidyr::gather(key = "Column", value = "Proportion", -Module_name, -Module_name2) %>%
+    dplyr::rename(Row = "Module_name") %>%
+    dplyr::mutate(Proportion = round(Proportion, digits = 1),
+                  Row = factor(Row, levels = unique(Row)),
+                  Column = factor(Column, levels = levels(Row)))
+
+
+  p <- ggplot(data = ggdf, aes(x = Column, y = Row)) +
+    geom_raster(aes(fill = Proportion)) +
+    scale_fill_gradient2(low = overlap_col[1],
+                         mid = overlap_col[2],
+                         high = overlap_col[3],
+                         midpoint = 0.5)+
+    geom_text(aes(label = Proportion), size = plotarea_text_size) +
+    # Hack to include module group names
+    geom_text(data = tibble(Module_group = module_group),
+              aes(x = Inf, y = Inf, label = "", color = Module_group))+
+    scale_color_manual(values = unique(module_group_col),
+                       labels = unique(module_group))+
+    scale_x_discrete(expand = c(0, 0), labels = unique(ggdf$Module_name2)) + # expand() remove extra space
+    scale_y_discrete(expand = c(0, 0), labels = unique(ggdf$Module_name2)) + # expand() remove extra space
+    # End hack
+    guides(fill = guide_colorbar(title.position = "top"),
+           color = ggh4x::guide_stringlegend(title.position = "top",
+                                             nrow = module_group_legend_rows,
+                                             face = "bold")) +
+    theme(axis.text.x.bottom = element_text(angle = angle, hjust = 1, vjust = axis.text.x.vjust),
+          legend.position = "bottom",
+          axis.text = element_text(colour = module_group_col, size = axis.text.size),
+          axis.ticks = element_line(colour = module_group_col),
+          axis.ticks.x = element_line(size = ticksize.x),
+          axis.ticks.y = element_line(size = ticksize.y)) +
+    labs(x = "Reference modules", y = "Test modules",
+         title = "Proportion of test modules present in reference module") +
+
+    geom_hline(yintercept = module_group_hline, color = line_col) +
+    geom_vline(xintercept = module_group_vline, color = line_col)
+
+  return(p)
+}
+
+
+
+module_correlation_plot <- function(
+  module_score = score, # module score output from get_module_score_2()
+  score_col = c(low = "darkgoldenrod", mid = "white", high = "darkcyan"),
+  module_group = module_annot$Module_group, # char vector of module group name, preserve module order as of module score df
+  module_group_col = module_annot$Module_group_col, # char vector of module group color, preserve order
+  module_group_vline = c(0.5, 8.5,10.5), # xintercept for vlines to group heatmap
+  module_group_hline = c(0.5, 8.5,10.5), # yintercept for hlines to group heatmap
+  module_group_legend_rows = 4, # module_group_col legend row setting
+  line_col = "gray30",
+  ticksize.x = 5,
+  ticksize.y = 4.5,
+  angle = 45, # x axis angle
+  axis.text.size = 1, # axis text size
+  axis.text.x.vjust = 1,  # x axis text justification
+  plotarea_text_size = 2
+){
+
+  # module_score = score
+  # score_col = c(low = "darkgoldenrod", mid = "white", high = "darkcyan")
+  # module_group = module_annot$Module_group
+  # module_group_col = module_annot$Module_group_col
+  # module_group_vline = c(0.5, 8.5,10.5)
+  # module_group_hline = c(0.5, 8.5,10.5)
+  # line_col = "gray30"
+  # ticksize.x = 5
+  # ticksize.y = 4.5
+  # angle = 45
+  # axis.text.x.vjust = 1
+  # plotarea_text_size = 2
+
+
+
+  # Co-correlaion
+  ggdf <- module_score %>%
+    dplyr::select(-1) %>%
+    cor(method = "pearson") %>%
+    as_tibble(rownames = "Row") %>%
+    tidyr::gather(key = "Column", value = "Pearson", -1) %>%
+    dplyr::mutate(Pearson = round(Pearson, digits = 1),
+                  Row = factor(Row, levels = unique(Row)),
+                  Column = factor(Column, levels = levels(Row)))
+
+
+  p <- ggplot(data = ggdf, aes(x = Column, y = Row)) +
+    geom_raster(aes(fill = Pearson)) +
+    scale_fill_gradient2(low = score_col[1],
+                         mid = score_col[2],
+                         high = score_col[3],
+                         midpoint = 0,
+                         limits = c(-1,1))+
+    geom_text(aes(label = Pearson), size = plotarea_text_size) +
+
+    scale_x_discrete(expand = c(0,0))+
+    scale_y_discrete(expand = c(0,0))+
+
+    # ! Hack to set legend for module class
+    geom_text(data = tibble(Module_group = module_group),
+              aes(x = Inf, y= -Inf, label = "", color = Module_group)) +
+    scale_color_manual(values = unique(module_group_col),
+                       labels = unique(module_group)) +
+    # ! end hack
+
+    guides(fill = guide_colorbar(title.position = "top"),
+           color = guide_stringlegend(title = "Module group",
+                                      face = "bold",
+                                      nrow = module_group_legend_rows,
+                                      title.position = "top") ) +
+
+    theme(axis.text.x.bottom = element_text(angle = angle, hjust = 1, vjust = axis.text.x.vjust),
+          legend.position = "bottom",
+          axis.text = element_text(colour = module_group_col, size = axis.text.size),
+          axis.ticks = element_line(colour = module_group_col),
+          axis.ticks.x = element_line(size = ticksize.x),
+          axis.ticks.y = element_line(size = ticksize.y),
+          panel.grid = element_blank()) + #axis.title = element_blank()
+    labs(x = "Gene modules", y = "Gene modules",
+         title = "Pearson correlation between gene modules") +
+
+
+    geom_hline(yintercept = module_group_hline, color = line_col) +
+    geom_vline(xintercept = module_group_vline, color = line_col)
+
+
+  return(p)
+
+}
+
+
+
+# end of update on 26 mar 2022
+
 # Validation of module subset in independent dataset
-validate_gene_modules <- function(module_full_list, module_subset_list, validation_data){
+validate_gene_modules <- function(
+  module_full_list,
+  module_subset_list,
+  validation_data
+){
 
   # module_full_list: list of full modules; each module dataframe must contain
   #                   minimum two columns "Ncbi_gene_id" and "Direction"
@@ -444,11 +677,11 @@ validate_gene_modules <- function(module_full_list, module_subset_list, validati
   # validation_data = tcga # 1073 x 19406
 
   score_full <- get_module_score_2(x = validation_data,
-                                 module_list = module_full_list,
-                                 by = "Ncbi_gene_id")
-  score_subset <- get_module_score_2(x = validation_data,
-                                   module_list = module_subset_list,
+                                   module_list = module_full_list,
                                    by = "Ncbi_gene_id")
+  score_subset <- get_module_score_2(x = validation_data,
+                                     module_list = module_subset_list,
+                                     by = "Ncbi_gene_id")
   pearson <- cor(score_full[,-1], score_subset[,-1], method = "pearson") %>% diag()
   spearman <- cor(score_full[,-1], score_subset[,-1], method = "spearman") %>% diag()
 
@@ -464,7 +697,11 @@ validate_gene_modules <- function(module_full_list, module_subset_list, validati
 
 
 
-filter_no_event_strata <- function(x, strata_variable, event_variable){
+filter_no_event_strata <- function(
+  x,
+  strata_variable,
+  event_variable
+){
 
   # strata_variable = "Arm"
   # event_variable = "DDFS_Event"
@@ -501,7 +738,9 @@ filter_no_event_strata <- function(x, strata_variable, event_variable){
 }
 
 
-tertile <- function(x){
+tertile <- function(
+  x
+){
   q1 <- quantile(x, probs = 0.33, na.rm=T)
   q2 <- quantile(x, probs = 0.66, na.rm=T)
   dplyr::if_else( x <= q1, "low",
@@ -509,17 +748,23 @@ tertile <- function(x){
     factor(levels = c("low", "mid", "high"))
 }
 
-binirize <- function(x){
+binirize <- function(
+  x
+){
   q1 <- quantile(x, probs = 0.25, na.rm=T)
   dplyr::if_else( x <= q1, "low", "high") %>%
     factor(levels = c("low", "high"))
 }
 
-binirize_q2 <- function(x){
+binirize_q2 <- function(
+  x
+){
   q2 <- quantile(x, probs = 0.5, na.rm=T)
   dplyr::if_else( x <= q2, "low", "high") %>%
     factor(levels = c("low", "high"))
 }
+
+
 
 # Test finher adjuvant prognosis with heterogeneity assesed using cox interaction test.
 get_adj_prog <- function(
@@ -548,14 +793,14 @@ get_adj_prog <- function(
   )
 
 
- # For testing heterogenity(interaction) w.r.t strata
- m1_het0 <- coxph(
+  # For testing heterogenity(interaction) w.r.t strata
+  m1_het0 <- coxph(
     formula = as.formula(
       paste("Surv(", time_variable, ",", event_variable, ") ~",
             biomarker, "+ interaction(Hormone, Herceptin, Chemo)")
     ),
     data = xdata
-    )
+  )
 
   m1_het1 <- coxph( # m1_het1
     formula = as.formula(
@@ -563,7 +808,7 @@ get_adj_prog <- function(
             biomarker,"* interaction(Hormone, Herceptin, Chemo)")
     ),
     data = xdata
-    )
+  )
 
 
   # Summary dataframe
@@ -579,11 +824,11 @@ get_adj_prog <- function(
   #     lrtest(m1_het0, m1_het1)[2, "Pr(>Chisq)", drop = F]
   #   )
   # } else {
-    x <- cbind(
-      summary(m1)$coefficients[biomarker, , drop=F],
-      summary(m1)$conf.int[biomarker, c("lower .95", "upper .95"), drop = F],
-      lrtest(m1_het0, m1_het1)[2, "Pr(>Chisq)", drop = F]
-    )
+  x <- cbind(
+    summary(m1)$coefficients[biomarker, , drop=F],
+    summary(m1)$conf.int[biomarker, c("lower .95", "upper .95"), drop = F],
+    lrtest(m1_het0, m1_het1)[2, "Pr(>Chisq)", drop = F]
+  )
   # }
 
 
@@ -613,6 +858,165 @@ get_adj_prog <- function(
   )
 
 }
+
+
+# cox() and coxphf() defult output
+get_std_firth_cox_out <- function(
+    formula_chr,
+    biomarker,
+    xdata # without NAs in model variables; coxphf() will throw error otherwise
+){
+
+  # # Test data
+  #  formula_chr = "Surv(OS_Time_Years, OS_Event ) ~ TIL + strata(Hormone, Herceptin, Chemo)"
+  #  xdata = clin_finher_finneo %>%
+  #    dplyr::filter(!(is.na(TIL))) # 118, before filtering 120
+  #  biomarker = "TIL"
+  #  formula_chr = "Surv(RFS_Time_Years, RFS_Event ) ~ TIL * Chemo"
+  # biomarker = "TIL"
+  # xdata = clin_finher_finneo
+
+  m1.std <- coxph(
+    formula = as.formula(formula_chr),
+    data = xdata
+  )
+
+
+  m1.firth <- coxphf(
+    formula = as.formula(formula_chr),
+    data = xdata,
+    # maxstep = 0.1,
+    maxit = 1000
+  )
+
+
+  # subset standard cox out
+
+  nme.std <- rownames(summary(m1.std)$coefficients)
+  idx.std <- nme.std[str_detect(nme.std, biomarker)]
+
+  x.std <- cbind(
+    summary(m1.std)$coefficients[idx.std, c("coef", "exp(coef)", "se(coef)", "z", "Pr(>|z|)") , drop = F],
+    summary(m1.std)$conf.int[idx.std, c("lower .95", "upper .95"), drop = F]
+  )
+  colnames(x.std) <- c("coef", "hr", "se_coef", "z", "p","ci.lo", "ci.up")
+
+
+
+  # subset firth cox out
+
+  nme.firth <- names(m1.firth$coefficients)
+  idx.firth <- nme.std[str_detect(nme.std, biomarker)]
+
+  x.firth <- cbind(
+    as.matrix(m1.firth$coefficients[idx.firth]),
+    as.matrix(m1.firth$coefficients[idx.firth] %>% exp()),
+    as.matrix(m1.firth$prob[idx.firth]),
+    as.matrix(m1.firth$ci.lower[idx.firth]),
+    as.matrix(m1.firth$ci.upper[idx.firth])
+  )
+
+  colnames(x.firth) <- c("coef", "hr", "p", "ci.lo", "ci.up")
+  colnames(x.firth) <- str_c("firth_", colnames(x.firth))
+
+
+
+  # merge and format output
+
+  x <- cbind(x.std, x.firth)
+  x <- bind_cols(
+    tibble(variable = rownames(x)),
+    as_tibble(x)
+  )
+
+  return(x)
+
+}
+
+
+# glm() and logistf() defult output
+get_std_firth_logist_out <- function(
+    formula_chr,
+    biomarker,
+    xdata # without NAs in model variables; coxphf() will throw error otherwise
+){
+
+  # # Test data
+  #  formula_chr = "Surv(OS_Time_Years, OS_Event ) ~ TIL + strata(Hormone, Herceptin, Chemo)"
+  #  xdata = clin_finher_finneo %>%
+  #    dplyr::filter(!(is.na(TIL))) # 118, before filtering 120
+  #  biomarker = "TIL"
+  # formula_chr = "Response ~ scaled_Denovo_TILsig + Arm_consolidated + Series_matrix_accession"
+  # biomarker = "scaled_Denovo_TILsig"
+  # xdata = clin_neoadj_finneo %>%
+  #   dplyr::filter(Subtype_ihc == "TN")
+
+  m1.std <- glm(
+    formula =as.formula(formula_chr),
+    data = xdata,
+    family = "binomial"
+  )
+
+
+  m1.firth <- logistf(
+    formula = as.formula(formula_chr),
+    data = xdata,
+    # maxstep = 0.1,
+    maxit = 1000
+  )
+
+
+  # subset standard cox out
+
+  nme.std <- rownames(summary(m1.std)$coefficients)
+  idx.std <- nme.std[str_detect(nme.std, biomarker)]
+
+  x.std <- cbind(
+    summary(m1.std)$coefficients[idx.std, c("Estimate", "Std. Error", "z value", "Pr(>|z|)") , drop=F],
+    confint.default(m1.std)[idx.std, c("2.5 %", "97.5 %"), drop = F]
+    # estimate and CI in log scale
+  )
+  colnames(x.std) <- c("coef", "se_coef", "z", "p","ci.lo", "ci.up")
+
+
+  x.std <- cbind(
+    x.std[,"coef", drop = F],
+    or = x.std[,"coef"] %>% exp(),
+    x.std[, c("se_coef", "z", "p"), drop = F],
+    exp(x.std[,c("ci.lo", "ci.up"), drop = F])
+  )
+
+  # subset firth cox out
+
+  nme.firth <- names(m1.firth$coefficients)
+  idx.firth <- nme.std[str_detect(nme.std, biomarker)]
+
+  x.firth <- cbind(
+    as.matrix(m1.firth$coefficients[idx.firth]),
+    as.matrix(m1.firth$coefficients[idx.firth] %>% exp()),
+    as.matrix(m1.firth$prob[idx.firth]),
+    as.matrix(m1.firth$ci.lower[idx.firth] %>% exp()),
+    as.matrix(m1.firth$ci.upper[idx.firth] %>% exp())
+    # estimate and CI in log scale
+  )
+
+  colnames(x.firth) <- c("coef", "or", "p", "ci.lo", "ci.up")
+  colnames(x.firth) <- str_c("firth_", colnames(x.firth))
+
+
+
+  # merge and format output
+
+  x <- cbind(x.std, x.firth)
+  x <- bind_cols(
+    tibble(variable = rownames(x)),
+    as_tibble(x)
+  )
+
+  return(x)
+
+}
+
 
 
 
@@ -691,10 +1095,10 @@ get_adj_inter <- function(
   #
   # } else {
 
-    x <- summarise_interaction_cox(
-      m1, m0, test_var = biomarker, inter_var = interaction_variable
-    ) %>%
-      dplyr::mutate(Therapy = Module_name)
+  x <- summarise_interaction_cox(
+    m1, m0, test_var = biomarker, inter_var = interaction_variable
+  ) %>%
+    dplyr::mutate(Therapy = Module_name)
 
   # }
 
@@ -722,6 +1126,7 @@ get_adj_inter <- function(
   )
 
 }
+
 
 
 # Test finher adjuvant prognosis with heterogeneity assesed using cox interaction test.
@@ -786,9 +1191,9 @@ get_adj_prog2 <- function(
 
   # updating interaction SE and CI
   se <- sqrt(
-      sum(x[, "se(coef)"] ^ 2) +
-        (2 * vcov(m1)[biomarker, xterm])
-    )
+    sum(x[, "se(coef)"] ^ 2) +
+      (2 * vcov(m1)[biomarker, xterm])
+  )
   x[xterm, "se(coef)"] <- se
   x[xterm, "lower .95"] <- (x[xterm, "coef"] - (1.96 * se)) %>% exp()
   x[xterm, "upper .95"] <- (x[xterm, "coef"] + (1.96 * se)) %>% exp()
@@ -907,7 +1312,12 @@ get_adj_inter2 <- function(
 }
 
 
-estimate_prog_heterogenity <- function(xclin, sig, perm = 100){
+
+estimate_prog_heterogenity <- function(
+  xclin,
+  sig,
+  perm = 100
+){
 
   # xclin <- clin_neoadj %>%
   #   dplyr::filter(Subtype_ihc == "HR" &
@@ -921,9 +1331,9 @@ estimate_prog_heterogenity <- function(xclin, sig, perm = 100){
   # Minimum two datasets are required for dataset hetrerogenity assessment
   if( length(xclin$Strata %>% unique()) == 1 ){
 
-     return(
+    return(
 
-       tibble(
+      tibble(
         Module_name = sig,
         Q = NA,
         Q_p = NA,
@@ -980,7 +1390,13 @@ estimate_prog_heterogenity <- function(xclin, sig, perm = 100){
 }
 
 
-summarise_interaction <- function(m1, m0, test_var, inter_var){
+
+summarise_interaction <- function(
+  m1,
+  m0,
+  test_var,
+  inter_var
+){
 
   # Funtion to extract and summarize interaction effect ready to plot
 
@@ -1072,7 +1488,7 @@ summarise_interaction <- function(m1, m0, test_var, inter_var){
       # Sum of variances reference from wikipedia, search term: "Variance"
       se <- sqrt(
         sum(x[c(idx[1], i), "Std. Error"] ^ 2) +
-        (2 * vcov(m1)[[idx[1], i]])
+          (2 * vcov(m1)[[idx[1], i]])
       )
       x[i, "Std. Error"] <- se
       x[i, "2.5 %"] <- x[i, "Estimate"] - (1.96 * se)
@@ -1131,7 +1547,13 @@ summarise_interaction <- function(m1, m0, test_var, inter_var){
 } # end of fun
 
 
-summarise_interaction_cox <- function(m1, m0, test_var, inter_var){
+
+summarise_interaction_cox <- function(
+  m1,
+  m0,
+  test_var,
+  inter_var
+){
 
   # Funtion to extract and summarize interaction effect ready to plot
   # Note that this function is identical to summarise_interaction(), except
@@ -1156,7 +1578,6 @@ summarise_interaction_cox <- function(m1, m0, test_var, inter_var){
   # >>>>>>>>>>>>>>>>>>>>>>>>>>
   m1_coef <- summary(m1)$coefficients
   m1_ci <- confint.default(m1)
-
 
 
   # subsetting relevent terms
@@ -1270,7 +1691,13 @@ summarise_interaction_cox <- function(m1, m0, test_var, inter_var){
 } # end of fun
 
 
-summarise_interaction_cox2 <- function(m1, test_var, inter_var, time_split_id){
+
+summarise_interaction_cox2 <- function(
+  m1,
+  test_var,
+  inter_var,
+  time_split_id
+){
 
 
   # Funtion to extract and summarize interaction effect ready to plot

@@ -137,6 +137,16 @@ clin_finher_split_os <- survSplit(formula = Surv(OS_Time_Years, OS_Event) ~ .,
                                     episode = "Interval_Id") %>%
   dplyr::mutate(Interval_Id = factor(Interval_Id))
 
+clin_finher_split_rfs <- survSplit(formula = Surv(RFS_Time_Years, RFS_Event) ~ .,
+                                  data = clin_finher  %>%
+                                    dplyr::filter(Subtype_IHC_2 == "HER2"),
+                                  cut = c(3),
+                                  start = "RFS_Time_Start", # New variable introduced
+                                  end = "RFS_Time_End", # Renaming of DDFS_Time_Years to avoid confusion
+                                  zero = 0,
+                                  episode = "Interval_Id") %>%
+  dplyr::mutate(Interval_Id = factor(Interval_Id))
+
 #
 # ==============================================================================
 
@@ -153,15 +163,16 @@ finher_her2_split <- list()
 
 finher_her2_split[["prog"]] <- purrr::map(
 
-  c("DDFS","OS"),
+  c("DDFS","OS", "RFS"),
 
-  function(event_type, clin_ddfs, clin_os){
+  function(event_type, clin_ddfs, clin_os, clin_rfs){
 
     print(event_type)
 
     clin <- switch(event_type,
                    "DDFS" = clin_ddfs,
-                   "OS" = clin_os)
+                   "OS" = clin_os,
+                   "RFS" = clin_rfs)
 
     xx <- purrr::map(
 
@@ -256,21 +267,22 @@ finher_her2_split[["prog"]] <- purrr::map(
     dplyr::filter(Subtype_IHC_2 == "HER2"),
 
   clin_os = clin_finher_split_os %>%
+    dplyr::filter(Subtype_IHC_2 == "HER2"),
+
+  clin_rfs = clin_finher_split_rfs %>%
     dplyr::filter(Subtype_IHC_2 == "HER2")
 
 )
 
-names(finher_her2_split[["prog"]]) <- c("DDFS","OS")
+names(finher_her2_split[["prog"]]) <- c("DDFS","OS","RFS")
 
 # There were 50 or more warnings (use warnings() to see the first 50)
 # warnings()
 # Warning messages:
 #   1: In fitter(X, Y, istrat, offset, init, control, weights = weights,  ... :
 #    Loglik converged before variable  2 ; beta may be infinite.
-
-# Note !!!!!!!!!
-# Warnings arise in DDFS and OS due to the no-event strata, DTX.TRA.HR. (Tested manually)
-# No warnings from RFS (all strata has some events)!!!!
+#   4: In agreg.fit(X, Y, istrat, offset, init, control, weights = weights,  ... :
+#                   Ran out of iterations and did not converge
 
 
 
@@ -278,15 +290,16 @@ names(finher_her2_split[["prog"]]) <- c("DDFS","OS")
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 finher_her2_split[["inter.chemo"]] <- purrr::map(
 
-  c("DDFS","OS"),
+  c("DDFS","OS", "RFS"),
 
-  function(event_type, clin_ddfs, clin_os){
+  function(event_type, clin_ddfs, clin_os, clin_rfs){
 
     print(event_type)
 
     clin <- switch(event_type,
                    "DDFS" = clin_ddfs,
-                   "OS" = clin_os)
+                   "OS" = clin_os,
+                   "RFS" = clin_rfs)
 
     xx <- purrr::map(
 
@@ -398,14 +411,56 @@ finher_her2_split[["inter.chemo"]] <- purrr::map(
     dplyr::filter(Subtype_IHC_2 == "HER2"),
 
   clin_os = clin_finher_split_os %>%
+    dplyr::filter(Subtype_IHC_2 == "HER2"),
+
+  clin_rfs = clin_finher_split_rfs %>%
     dplyr::filter(Subtype_IHC_2 == "HER2")
 
 )
 
-names(finher_her2_split[["inter.chemo"]]) <- c("DDFS","OS")
-# Warning message:
-# In sqrt(sum(x[c(idx2[1], i), "se(coef)"]^2) + (2 * vcov(m1)[idx2[1],  :
-#   NaNs produced
+names(finher_her2_split[["inter.chemo"]]) <- c("DDFS","OS","RFS")
+# Warning messages:
+#   1: In sqrt(sum(x[c(idx2[1], i), "se(coef)"]^2) + (2 * vcov(m1)[idx2[1],  :
+#       NaNs produced
+#   2: In sqrt(sum(x[c(idx2[1], i), "se(coef)"]^2) + (2 * vcov(m1)[idx2[1],  :
+#       NaNs produced
+#   3: In sqrt(sum(x[c(idx2[1], i), "se(coef)"]^2) + (2 * vcov(m1)[idx2[1],  :
+#       NaNs produced
+
+
+# Just consider relevant data for mta til paper
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+finher_her2_split_relevant = finher_her2_split
+
+save(finher_her2_split_relevant, file = str_c(out_data,"finher_her2_split_relevant.RData"))
+
+
+ddfs <- list()
+
+ddfs[["prog"]] <- summarize_her2_2(x = finher_her2_split_relevant$prog$DDFS$HER2, prog = T)
+ddfs[["inter.chemo"]] <- summarize_her2_2(x = finher_her2_split_relevant$inter.chemo$DDFS$HER2, prog = F)
+
+write_xlsx(ddfs, path = str_c(out_tables,"finher_her2_split_relevant_ddfs_summary.xlsx"))
+
+os <- list()
+
+os[["prog"]] <- summarize_her2_2(x = finher_her2_split_relevant$prog$OS$HER2, prog = T)
+os[["inter.chemo"]] <- summarize_her2_2(x = finher_her2_split_relevant$inter.chemo$OS$HER2, prog = F)
+
+write_xlsx(os, path = str_c(out_tables,"finher_her2_split_relevant_os_summary.xlsx"))
+
+rfs <- list()
+
+rfs[["prog"]] <- summarize_her2_2(x = finher_her2_split_relevant$prog$RFS$HER2, prog = T)
+rfs[["inter.chemo"]] <- summarize_her2_2(x = finher_her2_split_relevant$inter.chemo$RFS$HER2, prog = F)
+
+write_xlsx(rfs, path = str_c(out_tables,"finher_her2_split_relevant_rfs_summary.xlsx"))
+
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+
+
 
 
 # HER2 Chemo interaction; notra HER2 + strata(Hormone)

@@ -17,7 +17,8 @@
 # 1. Load data.
 # 2. Structure analysis
 # 3. Interaction test
-# 4. Save Robjects odf interaction summaries
+# 4. Analysis summary tables
+# 5. Save Robjects odf interaction summaries
 
 
 
@@ -25,52 +26,21 @@
 # 1. Load data
 # ==============================================================================
 
-load("results/data/clin_neoadj.RData")
-# load("results/data/expr_neoadj.RData") # for TILsig computation
-# load("results/data/tilsig_clean.RData") # for TILsig computation
-#
-#
-# # Update clin_neoadj with TILsig score
-# # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# sig <- tilsig_clean$ALL %>%
-#   dplyr::select(Direction, Ncbi_gene_id1)
-# nrow(sig) # 994
-#
-# sig <- sig %>%
-#   dplyr::filter(Ncbi_gene_id1 %in% all_of(expr_neoadj$Ncbi_gene_id))
-# nrow(sig) # 632
-#
-# # Compute module score and update clin_finher
-# score <- get_module_score(
-#   x = expr_neoadj %>% t_tibble(names_x_desc = "Sample_geo_accession"),
-#   module_list = list(TILsig_imm = sig %>%
-#                        dplyr::filter(Direction == 1) %>%
-#                        dplyr::mutate(Direction = 1), # average imm
-#                      TILsig_fib = sig %>%
-#                        dplyr::filter(Direction == -1) %>%
-#                        dplyr::mutate(Direction = 1), # average fib
-#                      TILsig = sig), # weighted average
-#   by = "Ncbi_gene_id1"
-# ) %>%
-#   dplyr::mutate(TILsig_imm = TILsig_imm %>% genefu::rescale(q=0.05),
-#                 TILsig_fib = TILsig_fib %>% genefu::rescale(q=0.05),
-#                 TILsig = TILsig %>% genefu::rescale(q=0.05))
-#
-# clin_neoadj <- clin_neoadj %>% left_join(score, by = "Sample_geo_accession")
+load("results/data/clin_neoadj_neo.RData")
 
-dim(clin_neoadj)
-# 1499  164
+dim(clin_neoadj_neo)
+# 1499  160
 
 
 # clean Arm and factor levels
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>
-clin_neoadj$Arm_consolidated %>% factor() %>% levels()
+clin_neoadj_neo$Arm_consolidated %>% factor() %>% levels()
 # [1] "A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy"
 # [2] "AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy"
 # [3] "AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy"
 # [4] "AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_therapy"
 
-clin_neoadj <- clin_neoadj %>%
+clin_neoadj_neo <- clin_neoadj_neo %>%
   dplyr::mutate(
     Arm_consolidated =  Arm_consolidated %>%
       str_replace("\\+noTaxane", "") %>%
@@ -82,19 +52,19 @@ clin_neoadj <- clin_neoadj %>%
       factor(levels = c("AAA+T", "A0A+T", "AAA", "AAA+T+TRA"))
   )
 
-clin_neoadj$Arm_consolidated %>% factor() %>% levels()
+clin_neoadj_neo$Arm_consolidated %>% factor() %>% levels()
 # [1] "AAA+T"     "A0A+T"     "AAA"       "AAA+T+TRA"
 
 
 
 # set subtype ihc levels
 # >>>>>>>>>>>>>>>>>>>>>>
-clin_neoadj$Subtype_ihc %>% factor() %>% levels()
+clin_neoadj_neo$Subtype_ihc %>% factor() %>% levels()
 # [1] "HER2" "HR"   "TN"
-clin_neoadj$Subtype_ihc2 %>% factor() %>% levels()
+clin_neoadj_neo$Subtype_ihc2 %>% factor() %>% levels()
 # [1] "HR"       "HR-HER2+" "HR+HER2+" "TN"
 
-clin_neoadj <- clin_neoadj %>%
+clin_neoadj_neo <- clin_neoadj_neo %>%
   dplyr::mutate(
     Subtype_ihc =  Subtype_ihc %>%
       factor(levels = c("TN", "HER2", "HR")),
@@ -102,9 +72,9 @@ clin_neoadj <- clin_neoadj %>%
       factor(levels = c("TN", "HR-HER2+", "HR+HER2+", "HR"))
   )
 
-clin_neoadj$Subtype_ihc %>% levels()
+clin_neoadj_neo$Subtype_ihc %>% levels()
 # [1] "TN" "HER2" "HR"
-clin_neoadj$Subtype_ihc2 %>% levels()
+clin_neoadj_neo$Subtype_ihc2 %>% levels()
 # [1] "TN" "HR-HER2+" "HR+HER2+" "HR"
 #
 # ==============================================================================
@@ -120,7 +90,7 @@ clin_neoadj$Subtype_ihc2 %>% levels()
 # >>>>>>>>>>>>>>>>>>>>>
 
 # All neoadj regimen
-clin_neoadj %>%
+clin_neoadj_neo %>%
   dplyr::group_by(
     Subtype = Subtype_ihc,
     Hr,
@@ -179,7 +149,7 @@ clin_neoadj %>%
 
 
 # All neoadj regimen with Strata info
-clin_neoadj %>%
+clin_neoadj_neo %>%
   dplyr::group_by(
     Subtype = Subtype_ihc,
     Hr,
@@ -241,16 +211,38 @@ clin_neoadj %>%
 # geo_inter <- vector(mode = "list", length = 4)
 # names(geo_inter) <- c("TN", "HER2", "HR", "ALL")
 
-geo_inter <- vector(mode = "list", length = 6)
-names(geo_inter) <- c("TN", "HR-HER2+", "HR+HER2+","HER2", "HR", "ALL")
+
+# geo_inter <- vector(mode = "list", length = 2)
+# names(geo_inter) <- c("TN", "HR")
+#
+# geo_inter <- purrr::map(
+#   geo_inter,
+#   ~{
+#     x <- vector(mode = "list", length = 2)
+#     names(x) <- c("individual.sig", "pooled.sig")
+#     x
+#   }
+# )
+
+geo_inter <- vector(mode = "list", length = 2)
+names(geo_inter) <- c("individual.sig", "pooled.sig")
+
+geo_inter <- purrr::map(
+  geo_inter,
+  ~{
+    x <- vector(mode = "list", length = 2)
+    names(x) <- c("TN", "HR")
+    x
+  }
+)
 
 
 # Per-subtype: Arm, Signature, and pCR interaction.
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 
-# TN analysis
-# @@@@@@@@@@@
+# TN analysis: individual.sig
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
 # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
@@ -268,14 +260,14 @@ names(geo_inter) <- c("TN", "HR-HER2+", "HR+HER2+","HER2", "HR", "ALL")
 
 
 # Analysis structure
-geo_inter$TN[["AAA.T_or_NoT"]] <- NA # main analysis
-geo_inter$TN[["T.AAA_or_A0A"]] <- NA # supplemenatry analysis
-geo_inter$TN[["Global"]] <- NA # supplemenatry analysis
+geo_inter$individual.sig$TN[["AAA.T_or_NoT"]] <- NA # main analysis
+geo_inter$individual.sig$TN[["T.AAA_or_A0A"]] <- NA # supplemenatry analysis
+geo_inter$individual.sig$TN[["Global"]] <- NA # supplemenatry analysis
 
 
 
 # Interaction summary
-geo_inter$TN <- purrr::map(
+geo_inter$individual.sig$TN <- purrr::map(
 
   #   Subtype       Arm   N
   # 1      TN     AAA+T 293
@@ -329,17 +321,39 @@ geo_inter$TN <- purrr::map(
     # Per sig prognosis + heterogenity
     xx <- purrr::map(
 
-      # c("TILsig", "TILsig_imm", "TILsig_fib",
-      c("TILsig_scaled",
-        "TILsig_APP_Fc", "TILsig_Immune", "TILsig_IFNg", #"TILsig_Innate",
-        "TILsig_ECM", "TILsig_Adhesion",
-        "Immune1", "Immune2", "Immune3",
-        "Interferon1", "Interferon2", "Interferon3",
-        "Cholesterol1", "Cholesterol2", "Cholesterol3",
-        "Fibrosis1", "Fibrosis2", "Fibrosis3",
-        "Proliferation1", "Proliferation2", "Proliferation3",
-        "Tcell", "CLymphocyte", "Bcell",
-        "NKcell", "Monocyte", "MDendritic", "Fibroblast"),
+      c(
+        "scaled_Denovo_TILsig",
+        "scaled_Denovo_Immune",
+        "scaled_Denovo_ECM",
+
+        "scaled_Gruosso2019_Immune",
+        "scaled_Hamy2016_Immune",
+        "scaled_Teschendorff2007_Immune",
+        "scaled_Yang2018_Immune",
+        "scaled_Desmedt2008_STAT1",
+
+        "scaled_Gruosso2019_Interferon",
+        "scaled_Farmer2009_MX1",
+        "scaled_Hamy2016_Interferon",
+        "scaled_Nirmal2018_Interferon",
+
+        "scaled_Gruosso2019_Cholesterol",
+        "scaled_Ehmsen2019_Chol",
+        "scaled_Simigdala2016_Chol",
+        "scaled_Sorrentino2014_Chol",
+
+        "scaled_Gruosso2019_Fibrosis",
+        "scaled_Hamy2016_Ecm",
+        "scaled_Naba2014_Ecmcore",
+        "scaled_Triulzi2013_Ecm",
+
+        "MCPcounter_Tcell",
+        "MCPcounter_B.Lineage",
+        "MCPcounter_Monocytic.Lineage",
+        "MCPcounter_Myeloid.Dendritic",
+        "MCPcounter_Endothelial",
+        "MCPcounter_Fibroblasts"
+      ),
 
       function(sig, xclin){
 
@@ -363,7 +377,7 @@ geo_inter$TN <- purrr::map(
         inter_var <- "Arm_consolidated"
 
         xinter <- summarise_interaction(m1 = m1_inter, m0 = m0_inter,
-                              test_var = sig, inter_var = inter_var)
+                                        test_var = sig, inter_var = inter_var)
 
 
 
@@ -471,42 +485,79 @@ geo_inter$TN <- purrr::map(
 
   },
 
-  clin = clin_neoadj
+  clin = clin_neoadj_neo
 )
 
-names(geo_inter$TN) <- c("AAA.T_or_NoT", # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
-                         "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
-                         "Global") # 3. Per subtype global interaction: all-Arm * Sig * pCR
+names(geo_inter$individual.sig$TN) <- c("AAA.T_or_NoT", # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
+                                        "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+                                        "Global") # 3. Per subtype global interaction: all-Arm * Sig * pCR
 
 
 
-# HR-HER2+ analysis
-# @@@@@@@@@@@@@@@@@
+# TN analysis: pooled.sig
+# @@@@@@@@@@@@@@@@@@@@@@@
 
-# 1. Per subtype trastuzumab interaction: AAA+Taxane+/-Trastuzumab * Sig * pCR
+# 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
+# 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+# 3. Per subtype global interaction: all-Arm * Sig * pCR
+
+# Naming convention:
+# Name analysis based on backbone(non-interacting) therapy and interaction tested therpies.
+# "." seperates back bone therpy from interaction tested therpaies/subtypes.
+# The part left to the "." represents backbone therapy and
+#   the part to the right represents interacion tested therapies or subtypes.
+
+# Recommanded R naming convention:
+# Name should only contains letters, numbers underscre and dot.
+# Ref:
+
 
 # Analysis structure
-geo_inter$`HR-HER2+`[["AAA_plus_T.TRA_or_NoTRA"]] <- NA # main analysis
+geo_inter$pooled.sig$TN[["AAA.T_or_NoT"]] <- NA # main analysis
+geo_inter$pooled.sig$TN[["T.AAA_or_A0A"]] <- NA # supplemenatry analysis
+geo_inter$pooled.sig$TN[["Global"]] <- NA # supplemenatry analysis
+
 
 
 # Interaction summary
-geo_inter$`HR-HER2+` <- purrr::map(
+geo_inter$pooled.sig$TN <- purrr::map(
 
   #   Subtype       Arm   N
-  # 4    HER2     AAA+T 135
-  # 5    HER2 AAA+T+TRA  87
+  # 1      TN     AAA+T 293
+  # 2      TN     A0A+T 150
+  # 3      TN       AAA  83
 
 
-  c("AAA_plus_T.TRA_or_NoTRA"), # 1. Per subtype trastuzumab interaction: AAA+Taxane+/-Trastuzumab * Sig * pCR
+  c("AAA.T_or_NoT", # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
+    "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+    "Global"), # 3. Per subtype global interaction: all-Arm * Sig * pCR
 
   function(analysis, clin){
 
     print(analysis)
 
-    # 1. Per subtype trastuzumab interaction: AAA+Taxane+/-Trastuzumab * Sig * pCR
-    xclin <- clin %>%
-      dplyr::filter(Subtype_ihc2 == "HR-HER2+" &
-                      str_detect(Arm_consolidated, "AAA"))
+    # Test data
+    # clin = clin_neoadj
+    # analysis = "AAA.T_or_NoT"
+    # sig = "Immune1"
+
+    xclin <- switch (
+      analysis,
+
+      # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
+      AAA.T_or_NoT = clin %>%
+        dplyr::filter(Subtype_ihc == "TN" &
+                        str_detect(Arm_consolidated, "AAA")),
+
+      # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+      T.AAA_or_A0A = clin %>%
+        dplyr::filter(Subtype_ihc == "TN" &
+                        str_detect(Arm_consolidated, "\\+T")),
+
+      # 3. Per subtype global interaction: all-Arm * Sig * pCR
+      Global = clin %>%
+        dplyr::filter(Subtype_ihc == "TN")
+    )
 
     xclin <- xclin %>%
       dplyr::mutate(
@@ -516,24 +567,30 @@ geo_inter$`HR-HER2+` <- purrr::map(
       )
 
 
-    # sig = "Immune2"
-    # analysis = "AAA_plus_T.TRA_or_NoTRA"
+    # sig = "Immune1"
+    # analysis = "AAA.T_or_NoT"
     # clin <- clin_neoadj
 
     # Per sig prognosis + heterogenity
     xx <- purrr::map(
 
-      # c("TILsig", "TILsig_imm", "TILsig_fib",
-      c("TILsig_scaled",
-        "TILsig_APP_Fc", "TILsig_Immune", "TILsig_IFNg", #"TILsig_Innate",
-        "TILsig_ECM", "TILsig_Adhesion",
-        "Immune1", "Immune2", "Immune3",
-        "Interferon1", "Interferon2", "Interferon3",
-        "Cholesterol1", "Cholesterol2", "Cholesterol3",
-        "Fibrosis1", "Fibrosis2", "Fibrosis3",
-        "Proliferation1", "Proliferation2", "Proliferation3",
-        "Tcell", "CLymphocyte", "Bcell",
-        "NKcell", "Monocyte", "MDendritic", "Fibroblast"),
+      c(
+        "scaled_Denovo_TILsig",
+        "scaled_Denovo_Immune",
+        "scaled_Denovo_ECM",
+
+        "scaled_Pooled_Immune",
+        "scaled_Pooled_Interferon",
+        "scaled_Pooled_Fibrosis",
+        "scaled_Pooled_Cholesterol",
+
+        "MCPcounter_Tcell",
+        "MCPcounter_B.Lineage",
+        "MCPcounter_Monocytic.Lineage",
+        "MCPcounter_Myeloid.Dendritic",
+        "MCPcounter_Endothelial",
+        "MCPcounter_Fibroblasts"
+      ),
 
       function(sig, xclin){
 
@@ -561,8 +618,6 @@ geo_inter$`HR-HER2+` <- purrr::map(
 
 
 
-
-
         # Estimate per arm and pooled data heterogenity
 
         inter_var_levels <- xinter %>%
@@ -597,12 +652,14 @@ geo_inter$`HR-HER2+` <- purrr::map(
                       dplyr::rename(Interaction_var_levels = "Arm_consolidated"),
                     by = "Interaction_var_levels")
 
+
         # Heterogenity assessment
         xhet <- purrr::map_dfr(
           inter_var_levels$Interaction_var_levels,
           function(l, xclin, sig){
 
             print(l)
+
 
             if (l == "") {
               # estmate heterogenity for the pooled dataset
@@ -615,6 +672,12 @@ geo_inter$`HR-HER2+` <- purrr::map(
                 )
             } else {
               # estmate heterogenity per arm
+
+              # Note in HR+HER2+ after filtering out strata with <10  samples,
+              # only one dataset has TRA containing regime. Hence dataset heterogenity
+              # assesment can't be done for this regimen. This situation will be
+              # handled in estimate_prog_heterogenity()
+
               estimate_prog_heterogenity(
                 xclin = xclin %>%
                   dplyr::filter(Arm_consolidated == l),
@@ -659,395 +722,22 @@ geo_inter$`HR-HER2+` <- purrr::map(
 
   },
 
-  clin = clin_neoadj
+  clin = clin_neoadj_neo
 )
 
-names(geo_inter$`HR-HER2+`) <- "AAA_plus_T.TRA_or_NoTRA"
+names(geo_inter$pooled.sig$TN) <- c("AAA.T_or_NoT", # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
+                                    "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+                                    "Global") # 3. Per subtype global interaction: all-Arm * Sig * pCR
 
 
 
 
 
 
-# HR+HER2+ analysis
-# @@@@@@@@@@@@@@@@@
 
-# 1. Per subtype trastuzumab interaction: AAA+Taxane+/-Trastuzumab * Sig * pCR
+# HR analysis:individual.sig
+# @@@@@@@@@@@@@@@@@@@@@@@@@@
 
-# Analysis structure
-geo_inter$`HR+HER2+`[["AAA_plus_T.TRA_or_NoTRA"]] <- NA # main analysis
-
-
-# Interaction summary
-geo_inter$`HR+HER2+` <- purrr::map(
-
-  #   Subtype       Arm   N
-  # 4    HER2     AAA+T 135
-  # 5    HER2 AAA+T+TRA  87
-
-
-  c("AAA_plus_T.TRA_or_NoTRA"), # 1. Per subtype trastuzumab interaction: AAA+Taxane+/-Trastuzumab * Sig * pCR
-
-  function(analysis, clin){
-
-    print(analysis)
-
-    # 1. Per subtype trastuzumab interaction: AAA+Taxane+/-Trastuzumab * Sig * pCR
-    xclin <- clin %>%
-      dplyr::filter(Subtype_ihc2 == "HR+HER2+" &
-                      str_detect(Arm_consolidated, "AAA")) %>%
-      # discarding strata with <10 samples(n=9 and event=2)
-      dplyr::filter(Series_matrix_accession != "GSE42822")
-
-    xclin <- xclin %>%
-      dplyr::mutate(
-        # Droping levels as some part of the scripts depends on relevant factor levels
-        Subtype_ihc = Subtype_ihc %>% droplevels(),
-        Arm_consolidated = Arm_consolidated %>% droplevels()
-      )
-
-
-    # sig = "Immune2"
-    # analysis = "AAA_plus_T.TRA_or_NoTRA"
-    # clin <- clin_neoadj
-
-    # Per sig prognosis + heterogenity
-    xx <- purrr::map(
-
-      # c("TILsig", "TILsig_imm", "TILsig_fib",
-      c("TILsig_scaled",
-        "TILsig_APP_Fc", "TILsig_Immune", "TILsig_IFNg", #"TILsig_Innate",
-        "TILsig_ECM", "TILsig_Adhesion",
-        "Immune1", "Immune2", "Immune3",
-        "Interferon1", "Interferon2", "Interferon3",
-        "Cholesterol1", "Cholesterol2", "Cholesterol3",
-        "Fibrosis1", "Fibrosis2", "Fibrosis3",
-        "Proliferation1", "Proliferation2", "Proliferation3",
-        "Tcell", "CLymphocyte", "Bcell",
-        "NKcell", "Monocyte", "MDendritic", "Fibroblast"),
-
-      function(sig, xclin){
-
-        print(sig)
-
-        # Estimate interaction and prognosis
-        m0_inter <- glm(
-          # formula =as.formula(paste("Response ~", sig, "+ Arm_consolidated")),
-          formula =as.formula(paste("Response ~", sig, "+ Arm_consolidated + Series_matrix_accession")),
-          data = xclin,
-          family = "binomial"
-        )
-
-        m1_inter <- glm(
-          # formula =as.formula(paste("Response ~", sig, "* Arm_consolidated")),
-          formula =as.formula(paste("Response ~", sig, "* Arm_consolidated + Series_matrix_accession")),
-          data = xclin,
-          family = "binomial"
-        )
-
-        inter_var <- "Arm_consolidated"
-
-        xinter <- summarise_interaction(m1 = m1_inter, m0 = m0_inter,
-                                        test_var = sig, inter_var = inter_var)
-
-
-
-
-
-        # Estimate per arm and pooled data heterogenity
-
-        inter_var_levels <- xinter %>%
-          dplyr::select(Module_name) %>%
-          dplyr::mutate(
-            Interaction_var_levels = str_split_fixed(string = Module_name, pattern = ":", n = 2)[, 2] %>%
-              str_replace(pattern = inter_var, "")
-          )
-
-
-        # Update with per arm sample size and event/pcr rate to 'inter_var_levels'
-        response_sum  <- xclin %>%
-          dplyr::group_by(Arm_consolidated) %>% # interaction variable
-          dplyr::summarise(N_response = which(Response == 1) %>% length(),
-                           N_patients = n(),
-                           Percent_repsonse = (N_response/N_patients) * 100 %>% round(digits = 2),
-                           .groups	= "keep")
-
-        # adding row for All samples
-        response_sum  <- bind_rows(
-          response_sum,
-          tibble(
-            Arm_consolidated = "",
-            N_response = response_sum$N_response %>% sum(),
-            N_patients = response_sum$N_patients %>% sum(),
-            Percent_repsonse = (N_response/N_patients) * 100
-          )
-        )
-
-        inter_var_levels <- inter_var_levels %>%
-          left_join(response_sum %>%
-                      dplyr::rename(Interaction_var_levels = "Arm_consolidated"),
-                    by = "Interaction_var_levels")
-
-        # Heterogenity assessment
-        xhet <- purrr::map_dfr(
-          inter_var_levels$Interaction_var_levels,
-          function(l, xclin, sig){
-
-            print(l)
-
-            if (l == "") {
-              # estmate heterogenity for the pooled dataset
-              estimate_prog_heterogenity(
-                xclin = xclin,
-                sig = sig
-              ) %>%
-                dplyr::mutate(
-                  Interaction_var_levels = l
-                )
-            } else {
-              # estmate heterogenity per arm
-              estimate_prog_heterogenity(
-                xclin = xclin %>%
-                  dplyr::filter(Arm_consolidated == l),
-                sig = sig
-              ) %>%
-                dplyr::mutate(
-                  Interaction_var_levels = l
-                )
-            }
-
-          },
-          xclin,
-          sig
-        )
-
-        xhet <- xhet %>%
-          dplyr::select(-Module_name) %>%
-          left_join(inter_var_levels, by = "Interaction_var_levels")
-
-
-
-        # Interaction + Heterogenity
-        xinter <- xinter %>%
-          left_join(xhet, by = "Module_name")
-
-      },
-
-      xclin
-    )
-
-
-    # Consolidate per sig stat and format
-    bind_rows(xx) %>%
-      dplyr::mutate(
-        P_inter_adj = p.adjust(
-          p = if_else(str_detect(Module_name, ":"), P, NA_real_),
-          method = "BH"),
-        P_prog_adj = p.adjust(
-          p = if_else(str_detect(Module_name, ":"), NA_real_, P),
-          method = "BH")
-      )
-
-  },
-
-  clin = clin_neoadj
-)
-
-names(geo_inter$`HR+HER2+`) <- "AAA_plus_T.TRA_or_NoTRA"
-
-
-
-# HER2 analysis
-# @@@@@@@@@@@@@
-
-# 1. Per subtype trastuzumab interaction: AAA+Taxane+/-Trastuzumab * Sig * pCR
-
-# Analysis structure
-geo_inter$HER2[["AAA_plus_T.TRA_or_NoTRA"]] <- NA # main analysis
-
-
-# Interaction summary
-geo_inter$HER2 <- purrr::map(
-
-  #   Subtype       Arm   N
-  # 4    HER2     AAA+T 135
-  # 5    HER2 AAA+T+TRA  87
-
-
-  c("AAA_plus_T.TRA_or_NoTRA"), # 1. Per subtype trastuzumab interaction: AAA+Taxane+/-Trastuzumab * Sig * pCR
-
-  function(analysis, clin){
-
-    print(analysis)
-
-    # 1. Per subtype trastuzumab interaction: AAA+Taxane+/-Trastuzumab * Sig * pCR
-    xclin <- clin %>%
-      dplyr::filter(Subtype_ihc == "HER2" &
-                      str_detect(Arm_consolidated, "AAA"))
-
-    xclin <- xclin %>%
-      dplyr::mutate(
-        # Droping levels as some part of the scripts depends on relevant factor levels
-        Subtype_ihc = Subtype_ihc %>% droplevels(),
-        Arm_consolidated = Arm_consolidated %>% droplevels()
-      )
-
-
-    # sig = "Immune2"
-    # analysis = "AAA_plus_T.TRA_or_NoTRA"
-    # clin <- clin_neoadj
-
-    # Per sig prognosis + heterogenity
-    xx <- purrr::map(
-
-      # c("TILsig", "TILsig_imm", "TILsig_fib",
-      c("TILsig_scaled",
-        "TILsig_APP_Fc", "TILsig_Immune", "TILsig_IFNg", #"TILsig_Innate",
-        "TILsig_ECM", "TILsig_Adhesion",
-        "Immune1", "Immune2", "Immune3",
-        "Interferon1", "Interferon2", "Interferon3",
-        "Cholesterol1", "Cholesterol2", "Cholesterol3",
-        "Fibrosis1", "Fibrosis2", "Fibrosis3",
-        "Proliferation1", "Proliferation2", "Proliferation3",
-        "Tcell", "CLymphocyte", "Bcell",
-        "NKcell", "Monocyte", "MDendritic", "Fibroblast"),
-
-      function(sig, xclin){
-
-        print(sig)
-
-        # Estimate interaction and prognosis
-        m0_inter <- glm(
-          # formula =as.formula(paste("Response ~", sig, "+ Arm_consolidated")),
-          # formula =as.formula(paste("Response ~", sig, "+ Arm_consolidated + Series_matrix_accession")),
-          formula =as.formula(paste("Response ~", sig, "+ Arm_consolidated + Hr + Series_matrix_accession")),
-          data = xclin,
-          family = "binomial"
-        )
-
-        m1_inter <- glm(
-          # formula =as.formula(paste("Response ~", sig, "* Arm_consolidated")),
-          # formula =as.formula(paste("Response ~", sig, "* Arm_consolidated + Series_matrix_accession")),
-          formula =as.formula(paste("Response ~", sig, "* Arm_consolidated + Hr + Series_matrix_accession")),
-          data = xclin,
-          family = "binomial"
-        )
-
-        inter_var <- "Arm_consolidated"
-
-        xinter <- summarise_interaction(m1 = m1_inter, m0 = m0_inter,
-                                        test_var = sig, inter_var = inter_var)
-
-
-
-
-
-        # Estimate per arm and pooled data heterogenity
-
-        inter_var_levels <- xinter %>%
-          dplyr::select(Module_name) %>%
-          dplyr::mutate(
-            Interaction_var_levels = str_split_fixed(string = Module_name, pattern = ":", n = 2)[, 2] %>%
-              str_replace(pattern = inter_var, "")
-          )
-
-
-        # Update with per arm sample size and event/pcr rate to 'inter_var_levels'
-        response_sum  <- xclin %>%
-          dplyr::group_by(Arm_consolidated) %>% # interaction variable
-          dplyr::summarise(N_response = which(Response == 1) %>% length(),
-                           N_patients = n(),
-                           Percent_repsonse = (N_response/N_patients) * 100 %>% round(digits = 2),
-                           .groups	= "keep")
-
-        # adding row for All samples
-        response_sum  <- bind_rows(
-          response_sum,
-          tibble(
-            Arm_consolidated = "",
-            N_response = response_sum$N_response %>% sum(),
-            N_patients = response_sum$N_patients %>% sum(),
-            Percent_repsonse = (N_response/N_patients) * 100
-          )
-        )
-
-        inter_var_levels <- inter_var_levels %>%
-          left_join(response_sum %>%
-                      dplyr::rename(Interaction_var_levels = "Arm_consolidated"),
-                    by = "Interaction_var_levels")
-
-        # Heterogenity assessment
-        xhet <- purrr::map_dfr(
-          inter_var_levels$Interaction_var_levels,
-          function(l, xclin, sig){
-
-            print(l)
-
-            if (l == "") {
-              # estmate heterogenity for the pooled dataset
-              estimate_prog_heterogenity(
-                xclin = xclin,
-                sig = sig
-              ) %>%
-                dplyr::mutate(
-                  Interaction_var_levels = l
-                )
-            } else {
-              # estmate heterogenity per arm
-              estimate_prog_heterogenity(
-                xclin = xclin %>%
-                  dplyr::filter(Arm_consolidated == l),
-                sig = sig
-              ) %>%
-                dplyr::mutate(
-                  Interaction_var_levels = l
-                )
-            }
-
-          },
-          xclin,
-          sig
-        )
-
-        xhet <- xhet %>%
-          dplyr::select(-Module_name) %>%
-          left_join(inter_var_levels, by = "Interaction_var_levels")
-
-
-
-        # Interaction + Heterogenity
-        xinter <- xinter %>%
-          left_join(xhet, by = "Module_name")
-
-      },
-
-      xclin
-    )
-
-
-    # Consolidate per sig stat and format
-    bind_rows(xx) %>%
-      dplyr::mutate(
-        P_inter_adj = p.adjust(
-          p = if_else(str_detect(Module_name, ":"), P, NA_real_),
-          method = "BH"),
-        P_prog_adj = p.adjust(
-          p = if_else(str_detect(Module_name, ":"), NA_real_, P),
-          method = "BH")
-      )
-
-  },
-
-  clin = clin_neoadj
-)
-
-names(geo_inter$HER2) <- "AAA_plus_T.TRA_or_NoTRA"
-
-
-
-
-# HR analysis
-# @@@@@@@@@@@
 
 # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
 # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
@@ -1055,13 +745,13 @@ names(geo_inter$HER2) <- "AAA_plus_T.TRA_or_NoTRA"
 
 
 # Analysis structure
-geo_inter$HR[["AAA.T_or_NoT"]] <- NA # main analysis
-geo_inter$HR[["T.AAA_or_A0A"]] <- NA # supplemenatry analysis
-geo_inter$HR[["Global"]] <- NA # supplemenatry analysis
+geo_inter$individual.sig$HR[["AAA.T_or_NoT"]] <- NA # main analysis
+geo_inter$individual.sig$HR[["T.AAA_or_A0A"]] <- NA # supplemenatry analysis
+geo_inter$individual.sig$HR[["Global"]] <- NA # supplemenatry analysis
 
 
 # Interaction summary
-geo_inter$HR <- purrr::map(
+geo_inter$individual.sig$HR <- purrr::map(
 
   #   Subtype       Arm   N
   # 6      HR     AAA+T 521
@@ -1111,17 +801,39 @@ geo_inter$HR <- purrr::map(
     # Per sig prognosis + heterogenity
     xx <- purrr::map(
 
-      # c("TILsig", "TILsig_imm", "TILsig_fib",
-      c("TILsig_scaled",
-        "TILsig_APP_Fc", "TILsig_Immune", "TILsig_IFNg", #"TILsig_Innate",
-        "TILsig_ECM", "TILsig_Adhesion",
-        "Immune1", "Immune2", "Immune3",
-        "Interferon1", "Interferon2", "Interferon3",
-        "Cholesterol1", "Cholesterol2", "Cholesterol3",
-        "Fibrosis1", "Fibrosis2", "Fibrosis3",
-        "Proliferation1", "Proliferation2", "Proliferation3",
-        "Tcell", "CLymphocyte", "Bcell",
-        "NKcell", "Monocyte", "MDendritic", "Fibroblast"),
+      c(
+        "scaled_Denovo_TILsig",
+        "scaled_Denovo_Immune",
+        "scaled_Denovo_ECM",
+
+        "scaled_Gruosso2019_Immune",
+        "scaled_Hamy2016_Immune",
+        "scaled_Teschendorff2007_Immune",
+        "scaled_Yang2018_Immune",
+        "scaled_Desmedt2008_STAT1",
+
+        "scaled_Gruosso2019_Interferon",
+        "scaled_Farmer2009_MX1",
+        "scaled_Hamy2016_Interferon",
+        "scaled_Nirmal2018_Interferon",
+
+        "scaled_Gruosso2019_Cholesterol",
+        "scaled_Ehmsen2019_Chol",
+        "scaled_Simigdala2016_Chol",
+        "scaled_Sorrentino2014_Chol",
+
+        "scaled_Gruosso2019_Fibrosis",
+        "scaled_Hamy2016_Ecm",
+        "scaled_Naba2014_Ecmcore",
+        "scaled_Triulzi2013_Ecm",
+
+        "MCPcounter_Tcell",
+        "MCPcounter_B.Lineage",
+        "MCPcounter_Monocytic.Lineage",
+        "MCPcounter_Myeloid.Dendritic",
+        "MCPcounter_Endothelial",
+        "MCPcounter_Fibroblasts"
+      ),
 
       function(sig, xclin){
 
@@ -1246,57 +958,43 @@ geo_inter$HR <- purrr::map(
 
   },
 
-  clin = clin_neoadj
+  clin = clin_neoadj_neo
 )
 
-names(geo_inter$HR) <- c("AAA.T_or_NoT", # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
-                         "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
-                         "Global") # 3. Per subtype global interaction: all-Arm * Sig * pCR
+names(geo_inter$individual.sig$HR) <- c("AAA.T_or_NoT", # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
+                                        "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+                                        "Global") # 3. Per subtype global interaction: all-Arm * Sig * pCR
 
 
 
 
+# HR analysis:pooled.sig
+# @@@@@@@@@@@@@@@@@@@@@@
 
 
-# Pan-subtype(ALL) per-arm: Subtype, Signature, and pCR interaction.
-# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
+# 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+# 3. Per subtype global interaction: all-Arm * Sig * pCR
 
-# Pan-Subtype (ALL) analysis >>>>>
-# 1. Subtype interaction in AAA+Taxane: TN/HER2/HR * Sig * pCR
-# 2. Subtype interaction in AAA+noTaxane: TN/HR * Sig * pCR
-# 3. Subtype interaction in A0A+Taxane: TN/HR * Sig * pCR
 
 # Analysis structure
-geo_inter$ALL[["AAA_plus_T.TN_or_HER2_or_HR"]] <- NA # main analysis
-geo_inter$ALL[["AAA_plus_T.TN_or_HRnHER2_or_HRpHER2_or_HR"]] <- NA # main analysis
-geo_inter$ALL[["AAA.TN_or_HR"]] <- NA # main analysis
-geo_inter$ALL[["AOA_plus_T.TN_or_HR"]] <- NA # supplementary analysis
-
+geo_inter$pooled.sig$HR[["AAA.T_or_NoT"]] <- NA # main analysis
+geo_inter$pooled.sig$HR[["T.AAA_or_A0A"]] <- NA # supplemenatry analysis
+geo_inter$pooled.sig$HR[["Global"]] <- NA # supplemenatry analysis
 
 
 # Interaction summary
-geo_inter$ALL <- purrr::map(
+geo_inter$pooled.sig$HR <- purrr::map(
 
   #   Subtype       Arm   N
-  # 1      TN     AAA+T 293
-  # 2      TN     A0A+T 150
-  # 3      TN       AAA  83
-
-  # 4    HER2     AAA+T 135
-  # 5    HER2 AAA+T+TRA  87
-
   # 6      HR     AAA+T 521
   # 7      HR     A0A+T 139
   # 8      HR       AAA  91
 
 
-  c("AAA_plus_T.TN_or_HER2_or_HR", # 1. Subtype interaction in AAA+Taxane: TN/HER2/HR * Sig * pCR
-    "AAA_plus_T.TN_or_HRnHER2_or_HRpHER2_or_HR", # 2. Subtype interaction in AAA+Taxane: TN/HR-HER2+/HR-HER2+/HR * Sig * pCR
-    # Note on the analysis: "AAA_plus_T.TN_or_HRnHER2_or_HRpHER2_or_HR"
-    # No filtering of TRA regimen containg datset with n=9 in HR+HER2+ required.
-    # As only non-TRA regimens were considered in this analysis.
-    "AAA.TN_or_HR", # 3. Subtype interaction in AAA+noTaxane: TN/HR * Sig * pCR
-    "AOA_plus_T.TN_or_HR"), # 4. Subtype interaction in A0A+Taxane: TN/HR * Sig * pCR
+  c("AAA.T_or_NoT", # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
+    "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+    "Global"), # 3. Per subtype global interaction: all-Arm * Sig * pCR
 
   function(analysis, clin){
 
@@ -1305,25 +1003,21 @@ geo_inter$ALL <- purrr::map(
     xclin <- switch (
       analysis,
 
-      # 1. Subtype interaction in AAA+Taxane: TN/HER2/HR * Sig * pCR
-      AAA_plus_T.TN_or_HER2_or_HR = clin %>%
-        dplyr::filter(str_detect(Arm_consolidated, "AAA\\+T") &
-                        str_detect(Arm_consolidated, "TRA", negate = TRUE)),
+      # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
+      AAA.T_or_NoT = clin %>%
+        dplyr::filter(Subtype_ihc == "HR"  &
+                        str_detect(Arm_consolidated, "AAA")),
 
-      # 2. Subtype interaction in AAA+Taxane: TN/HR-HER2+/HR-HER2+/HR * Sig * pCR
-      AAA_plus_T.TN_or_HRnHER2_or_HRpHER2_or_HR = clin %>%
-        dplyr::filter(str_detect(Arm_consolidated, "AAA\\+T") &
-                        str_detect(Arm_consolidated, "TRA", negate = TRUE)) %>%
-        dplyr::mutate(Subtype_ihc = Subtype_ihc2), # to incorporate HR based HER2 subtypes
+      # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+      T.AAA_or_A0A = clin %>%
+        dplyr::filter(Subtype_ihc == "HR" &
+                        str_detect(Arm_consolidated, "\\+T")),
 
-      # 3. Subtype interaction in AAA+noTaxane: TN/HR * Sig * pCR
-      AAA.TN_or_HR = clin %>%
-        dplyr::filter(str_detect(Arm_consolidated, "AAA") & str_detect(Arm_consolidated, "AAA\\+T", negate = TRUE)),
-
-      # 4. Subtype interaction in A0A+Taxane: TN/HR * Sig * pCR
-      AOA_plus_T.TN_or_HR = clin %>%
-        dplyr::filter(str_detect(Arm_consolidated, "A0A\\+T"))
+      # 3. Per subtype global interaction: all-Arm * Sig * pCR
+      Global = clin %>%
+        dplyr::filter(Subtype_ihc == "HR")
     )
+
 
     xclin <- xclin %>%
       dplyr::mutate(
@@ -1332,26 +1026,31 @@ geo_inter$ALL <- purrr::map(
         Arm_consolidated = Arm_consolidated %>% droplevels()
       )
 
-    print(table(xclin$Subtype_ihc))
 
-    # sig = "Immune1"
-    # analysis = "AAA_plus_T.TN_or_HER2_or_HR"
+    # sig = "Cholesterol3"
+    # analysis = "T.AAA_or_A0A"
     # clin <- clin_neoadj
 
     # Per sig prognosis + heterogenity
     xx <- purrr::map(
 
-      # c("TILsig", "TILsig_imm", "TILsig_fib",
-      c("TILsig_scaled",
-        "TILsig_APP_Fc", "TILsig_Immune", "TILsig_IFNg", #"TILsig_Innate",
-        "TILsig_ECM", "TILsig_Adhesion",
-        "Immune1", "Immune2", "Immune3",
-        "Interferon1", "Interferon2", "Interferon3",
-        "Cholesterol1", "Cholesterol2", "Cholesterol3",
-        "Fibrosis1", "Fibrosis2", "Fibrosis3",
-        "Proliferation1", "Proliferation2", "Proliferation3",
-        "Tcell", "CLymphocyte", "Bcell",
-        "NKcell", "Monocyte", "MDendritic", "Fibroblast"),
+      c(
+        "scaled_Denovo_TILsig",
+        "scaled_Denovo_Immune",
+        "scaled_Denovo_ECM",
+
+        "scaled_Pooled_Immune",
+        "scaled_Pooled_Interferon",
+        "scaled_Pooled_Fibrosis",
+        "scaled_Pooled_Cholesterol",
+
+        "MCPcounter_Tcell",
+        "MCPcounter_B.Lineage",
+        "MCPcounter_Monocytic.Lineage",
+        "MCPcounter_Myeloid.Dendritic",
+        "MCPcounter_Endothelial",
+        "MCPcounter_Fibroblasts"
+      ),
 
       function(sig, xclin){
 
@@ -1359,20 +1058,20 @@ geo_inter$ALL <- purrr::map(
 
         # Estimate interaction and prognosis
         m0_inter <- glm(
-          # formula =as.formula(paste("Response ~", sig, "+ Subtype_ihc")),
-          formula =as.formula(paste("Response ~", sig, "+ Subtype_ihc + Series_matrix_accession")),
+          # formula =as.formula(paste("Response ~", sig, "+ Arm_consolidated")),
+          formula =as.formula(paste("Response ~", sig, "+ Arm_consolidated + Series_matrix_accession")),
           data = xclin,
           family = "binomial"
         )
 
         m1_inter <- glm(
-          # formula =as.formula(paste("Response ~", sig, "* Subtype_ihc")),
-          formula =as.formula(paste("Response ~", sig, "* Subtype_ihc + Series_matrix_accession")),
+          # formula =as.formula(paste("Response ~", sig, "* Arm_consolidated")),
+          formula =as.formula(paste("Response ~", sig, "* Arm_consolidated + Series_matrix_accession")),
           data = xclin,
           family = "binomial"
         )
 
-        inter_var <- "Subtype_ihc"
+        inter_var <- "Arm_consolidated"
 
         xinter <- summarise_interaction(m1 = m1_inter, m0 = m0_inter,
                                         test_var = sig, inter_var = inter_var)
@@ -1393,7 +1092,7 @@ geo_inter$ALL <- purrr::map(
 
         # Update with per arm sample size and event/pcr rate to 'inter_var_levels'
         response_sum  <- xclin %>%
-          dplyr::group_by(Subtype_ihc) %>% # interaction variable
+          dplyr::group_by(Arm_consolidated) %>% # interaction variable
           dplyr::summarise(N_response = which(Response == 1) %>% length(),
                            N_patients = n(),
                            Percent_repsonse = (N_response/N_patients) * 100 %>% round(digits = 2),
@@ -1403,7 +1102,7 @@ geo_inter$ALL <- purrr::map(
         response_sum  <- bind_rows(
           response_sum,
           tibble(
-            Subtype_ihc = "",
+            Arm_consolidated = "",
             N_response = response_sum$N_response %>% sum(),
             N_patients = response_sum$N_patients %>% sum(),
             Percent_repsonse = (N_response/N_patients) * 100
@@ -1412,9 +1111,8 @@ geo_inter$ALL <- purrr::map(
 
         inter_var_levels <- inter_var_levels %>%
           left_join(response_sum %>%
-                      dplyr::rename(Interaction_var_levels = "Subtype_ihc"),
+                      dplyr::rename(Interaction_var_levels = "Arm_consolidated"),
                     by = "Interaction_var_levels")
-
 
         # Heterogenity assessment
         xhet <- purrr::map_dfr(
@@ -1435,7 +1133,7 @@ geo_inter$ALL <- purrr::map(
               # estmate heterogenity per arm
               estimate_prog_heterogenity(
                 xclin = xclin %>%
-                  dplyr::filter(Subtype_ihc == l), # inter_var is "Subtype_ihc"
+                  dplyr::filter(Arm_consolidated == l),
                 sig = sig
               ) %>%
                 dplyr::mutate(
@@ -1477,14 +1175,87 @@ geo_inter$ALL <- purrr::map(
 
   },
 
-  clin = clin_neoadj
+  clin = clin_neoadj_neo
 )
 
-names(geo_inter$ALL) <-  c("AAA_plus_T.TN_or_HER2_or_HR", # 1. Subtype interaction in AAA+Taxane: TN/HER2/HR * Sig * pCR
-                           "AAA_plus_T.TN_or_HRnHER2_or_HRpHER2_or_HR", # 2. Subtype interaction in AAA+Taxane: TN/HR-HER2+/HR-HER2+/HR * Sig * pCR
-                           "AAA.TN_or_HR", # 3. Subtype interaction in AAA+noTaxane: TN/HR * Sig * pCR
-                           "AOA_plus_T.TN_or_HR") # 4. Subtype interaction in A0A+Taxane: TN/HR * Sig * pCR
+names(geo_inter$pooled.sig$HR) <- c("AAA.T_or_NoT", # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
+                                    "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+                                    "Global") # 3. Per subtype global interaction: all-Arm * Sig * pCR
 
+
+#
+# ==============================================================================
+
+
+
+
+# 4. Analysis summary tables
+# ==============================================================================
+
+# geo_inter
+
+summarize_geo_inter <- function(x){
+
+  # x <- geo_inter$TN$AAA.T_or_NoT
+
+
+
+
+  x <- purrr::map(x,
+                  function(xx, prog){
+
+                    xx <- xx %>%
+                      dplyr::filter(is.na(P_prog_adj))
+
+
+                      nme <- c("Module_name", "Interaction_var_levels", "N_response", "N_patients", "Percent_repsonse",
+                               "Estimate", "l95", "u95", "P", "P_inter_adj", "Q", "Q_p", "I2")
+                      xx <- xx[ , nme] %>%
+                        dplyr::mutate(
+                          Percent_repsonse = round(Percent_repsonse, digits = 1) %>% str_c("%"),
+                          Log_OR = str_c(round(Estimate, digits = 1),
+                                         " (",
+                                         round(l95,digits=1), "-",
+                                         round(u95,digits=1),
+                                         ")"),
+                          P = round(P, digits = 3),
+                          P_inter_adj = round(P_inter_adj, digits = 3),
+                          Q = round(Q, digits = 3),
+                          Q_p = round(Q_p, digits = 3),
+                          I2 = round(I2, digits = 3)
+                          )
+
+                      xx %>%
+                        dplyr::select(c("Module_name", "Interaction_var_levels",
+                                        "N_response", "N_patients", "Percent_repsonse",
+                                        "Log_OR", "P", "P_inter_adj", "Q", "Q_p", "I2"))
+
+
+                    })
+
+  return(x)
+
+}
+
+xout <- list()
+
+xout[["TN_individual.sig"]] <- summarize_geo_inter(x = geo_inter$individual.sig$TN)$AAA.T_or_NoT
+xout[["TN_pooled.sig"]] <- summarize_geo_inter(x = geo_inter$pooled.sig$TN)$AAA.T_or_NoT
+xout[["HR_individual.sig"]] <- summarize_geo_inter(x = geo_inter$individual.sig$HR)$AAA.T_or_NoT
+xout[["HR_pooled.sig"]] <- summarize_geo_inter(x = geo_inter$pooled.sig$HR)$AAA.T_or_NoT
+
+write_xlsx(xout, path = str_c(out_tables,"geo_taxane_interaction_summary_v2.2.xlsx"))
+
+
+
+xout <- list()
+
+xout[["TN_individual.sig"]] <- summarize_geo_inter(x = geo_inter$individual.sig$TN)$T.AAA_or_A0A
+xout[["TN_pooled.sig"]] <- summarize_geo_inter(x = geo_inter$pooled.sig$TN)$T.AAA_or_A0A
+xout[["HR_individual.sig"]] <- summarize_geo_inter(x = geo_inter$individual.sig$HR)$T.AAA_or_A0A
+xout[["HR_pooled.sig"]] <- summarize_geo_inter(x = geo_inter$pooled.sig$HR)$T.AAA_or_A0A
+
+write_xlsx(xout, path = str_c(out_tables,"geo_antimetabolite_interaction_summary_v2.2.xlsx"))
 
 
 
@@ -1493,12 +1264,12 @@ names(geo_inter$ALL) <-  c("AAA_plus_T.TN_or_HER2_or_HR", # 1. Subtype interacti
 
 
 
-# 4. Save Robjects odf interaction summaries
+# 5. Save Robjects odf interaction summaries
 # ==============================================================================
 
 
 # geo_inter : Interaction summary
-save(geo_inter, file = str_c(out_data,"geo_inter.RData")) # old name: inter_sum
+save(geo_inter, file = str_c(out_data,"geo_inter_v2.2.RData")) # old name: inter_sum
 
 
 #

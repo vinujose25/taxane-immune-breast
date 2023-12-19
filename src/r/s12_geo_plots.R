@@ -1,45 +1,8 @@
 # geo plots
 
 
-
 load("results/data/geo_prog.RData")
 load("results/data/geo_inter.RData")
-
-
-load("results/data/clin_neoadj.RData") # for correlation plots
-# load("results/data/expr_neoadj.RData") # for TILsig computation
-# load("results/data/tilsig_clean.RData") # for TILsig computation
-#
-#
-# # Update clin_neoadj with TILsig score
-# # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# sig <- tilsig_clean$ALL %>%
-#   dplyr::select(Direction, Ncbi_gene_id1)
-# nrow(sig) # 994
-#
-# sig <- sig %>%
-#   dplyr::filter(Ncbi_gene_id1 %in% all_of(expr_neoadj$Ncbi_gene_id))
-# nrow(sig) # 632
-#
-# # Compute module score and update clin_finher
-# score <- get_module_score_2(
-#   x = expr_neoadj %>% t_tibble(names_x_desc = "Sample_geo_accession"),
-#   module_list = list(TILsig_imm = sig %>%
-#                        dplyr::filter(Direction == 1) %>%
-#                        dplyr::mutate(Direction = 1), # average imm
-#                      TILsig_fib = sig %>%
-#                        dplyr::filter(Direction == -1) %>%
-#                        dplyr::mutate(Direction = 1), # average fib
-#                      TILsig = sig), # weighted average
-#   by = "Ncbi_gene_id1"
-# ) %>%
-#   dplyr::mutate(TILsig_imm = TILsig_imm %>% genefu::rescale(q=0.05),
-#                 TILsig_fib = TILsig_fib %>% genefu::rescale(q=0.05),
-#                 TILsig = TILsig %>% genefu::rescale(q=0.05))
-#
-# clin_neoadj <- clin_neoadj %>% left_join(score, by = "Sample_geo_accession")
-
-
 
 
 # Color scheme
@@ -91,6 +54,25 @@ names(custom_colours) <- nme
 
 
 
+# GEO interaction subtype specific regimen summary
+# ==============================================================================
+clin_neoadj  %>%
+  dplyr::group_by(Subtype_ihc2, Arm_consolidated) %>%
+  dplyr::summarize(N = n())
+#   Subtype_ihc2 Arm_consolidated                                                         N
+# 1 HR           A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     139
+# 2 HR           AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy    91
+# 3 HR           AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     521
+# 4 HR-HER2+     AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy      80
+# 5 HR-HER2+     AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_therapy        58
+# 6 HR+HER2+     AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy      55
+# 7 HR+HER2+     AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_therapy        29
+# 8 TN           A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     150
+# 9 TN           AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy    83
+# 10 TN           AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     293
+
+#
+# ==============================================================================
 
 
 # GEO prognosis plots
@@ -163,45 +145,48 @@ geo_prog_merged <-
     ),
 
     Module_name = str_split_fixed(string = Module_name, pattern = ":", n = 2)[, 1] %>%
-
-      str_replace("_scaled","") %>%
-      str_replace("_Fc","") %>%
-      str_replace("Adhesion","Adh.") %>%
-      str_replace("Immune","Imm") %>%
-      str_replace("Interferon","Ifn") %>%
-      str_replace("Cholesterol","Chl") %>%
-      str_replace("Fibrosis","Fib") %>%
-      str_replace("Proliferation","Prolif") %>%
-      str_replace("CLymphocyte","C.Lymph") %>%
-      str_replace("MDendritic","M.Dendri") %>%
-      # str_replace("Fibroblast","F.blast") %>%
-      str_replace_all("_",".") %>%
-
-      factor(levels = c(
-        # "TIL", "TILsig", "TILsig.imm","TILsig.fib",
-        "TIL", "TILsig", "TILsig.APP", "TILsig.Imm","TILsig.IFNg",
-        "TILsig.ECM", "TILsig.Adh.",
-        "Imm1", "Imm2", "Imm3",
-        "Ifn1", "Ifn2", "Ifn3",
-        "Chl1", "Chl2", "Chl3",
-        "Fib1", "Fib2", "Fib3",
-        "Prolif1", "Prolif2", "Prolif3",
-        "Tcell", "C.Lymph", "Bcell",
-        "NKcell", "Monocyte", "M.Dendri",
-        "Fibroblast"
-      ) %>% rev()
-      ),
-
+      str_replace("scaled_",""),
 
     # grouping modules
     Module_class = case_when(
-      str_detect(Module_name, "TIL") ~ "TIL",
-      TRUE ~ "Celltype / Proliferation / TIL-localization signatures"
+      str_detect(Module_name, "Denovo") ~ "De-novo",
+      str_detect(Module_name, "Gruosso2019") ~ "TIL-loc.",
+      str_detect(Module_name, "General") ~ "General",
+      str_detect(Module_name, "MCPcounter") ~ "MCPcounter",
+      str_detect(Module_name, "Control") ~ "Control",
+      TRUE ~ "Unknown"
     ) %>%
       factor(levels = c(
-        "TIL",
-        "Celltype / Proliferation / TIL-localization signatures"
-      ))
+        "De-novo", "TIL-loc.", "General", "MCPcounter", "Control"
+      )),
+
+    Module_name =  Module_name %>%
+      str_replace("Denovo","") %>%
+      str_replace("Gruosso2019","") %>%
+      str_replace("General","") %>%
+      str_replace("MCPcounter","") %>%
+      str_replace("Control","") %>%
+      str_replace("_","") %>%
+      str_replace("Tcell","T.Cell") %>%
+      str_replace("Cyto.Lymphocyte","Cyto.Lympho") %>%
+      str_replace("B.Lineage","B.Cell") %>%
+      str_replace("NK.Cells","NK.Cell") %>%
+      str_replace("Monocytic.Lineage","Monocyte") %>%
+      str_replace("Myeloid.Dendritic","M.Dendritic") %>%
+      str_replace("Neutrophils","Neutrophil") %>%
+      str_replace("Fibroblasts","Fibroblast") %>%
+      str_replace("Non.breast.tissue","Non.Breast") %>%
+      str_replace("Human_Behaviour","Behavioural") %>%
+      factor(levels = c(
+        "TILsig", #"Immune","ECM", # Denovo
+        "Immune", "Interferon", "Cholesterol", "Fibrosis", #  grusso
+        "ECM", # "Immune", "Interferon", "Cholesterol",  # general
+        "T.Cell", "Cyto.Lympho", "B.Cell", "NK.Cell",
+        "Monocyte", "M.Dendritic", "Neutrophil",
+        "Endothelial", "Fibroblast",
+        "Proliferation","Non.Breast", "Behavioural" # control
+      ) %>% rev()
+      )
   )
 
 
@@ -382,44 +367,90 @@ geo_inter_merged <-
       factor(levels = c("AAA+T+TRA", "AAA", "A0A+T", "AAA+T", "HR", "HER2", "TN")),
 
     Module_name = str_split_fixed(string = Module_name, pattern = ":", n = 2)[, 1] %>%
-
-      str_replace("_scaled","") %>%
-      str_replace("_Fc","") %>%
-      str_replace("Adhesion","Adh.") %>%
-      str_replace("Immune","Imm") %>%
-      str_replace("Interferon","Ifn") %>%
-      str_replace("Cholesterol","Chl") %>%
-      str_replace("Fibrosis","Fib") %>%
-      str_replace("Proliferation","Prolif") %>%
-      str_replace("CLymphocyte","C.Lymph") %>%
-      str_replace("MDendritic","M.Dendri") %>%
-      # str_replace("Fibroblast","F.blast") %>%
-      str_replace_all("_",".") %>%
-
-      factor(levels = c(
-        # "TIL", "TILsig", "TILsig.imm","TILsig.fib",
-        "TIL", "TILsig", "TILsig.APP", "TILsig.Imm","TILsig.IFNg",
-        "TILsig.ECM", "TILsig.Adh.",
-        "Imm1", "Imm2", "Imm3",
-        "Ifn1", "Ifn2", "Ifn3",
-        "Chl1", "Chl2", "Chl3",
-        "Fib1", "Fib2", "Fib3",
-        "Prolif1", "Prolif2", "Prolif3",
-        "Tcell", "C.Lymph", "Bcell",
-        "NKcell", "Monocyte", "M.Dendri",
-        "Fibroblast"
-      ) %>% rev()
-      ),
+      str_replace("scaled_",""),
 
     # grouping modules
     Module_class = case_when(
-      str_detect(Module_name, "TIL") ~ "TIL",
-      TRUE ~ "Celltype / Proliferation / TIL-localization signatures"
+      str_detect(Module_name, "Denovo") ~ "De-novo",
+      str_detect(Module_name, "Gruosso2019") ~ "TIL-loc.",
+      str_detect(Module_name, "General") ~ "General",
+      str_detect(Module_name, "MCPcounter") ~ "MCPcounter",
+      str_detect(Module_name, "Control") ~ "Control",
+      TRUE ~ "Unknown"
     ) %>%
       factor(levels = c(
-        "TIL",
-        "Celltype / Proliferation / TIL-localization signatures"
+        "De-novo", "TIL-loc.", "General", "MCPcounter", "Control"
       )),
+
+    Module_name =  Module_name %>%
+      str_replace("Denovo","") %>%
+      str_replace("Gruosso2019","") %>%
+      str_replace("General","") %>%
+      str_replace("MCPcounter","") %>%
+      str_replace("Control","") %>%
+      str_replace("_","") %>%
+      str_replace("Tcell","T.Cell") %>%
+      str_replace("Cyto.Lymphocyte","Cyto.Lympho") %>%
+      str_replace("B.Lineage","B.Cell") %>%
+      str_replace("NK.Cells","NK.Cell") %>%
+      str_replace("Monocytic.Lineage","Monocyte") %>%
+      str_replace("Myeloid.Dendritic","M.Dendritic") %>%
+      str_replace("Neutrophils","Neutrophil") %>%
+      str_replace("Fibroblasts","Fibroblast") %>%
+      str_replace("Non.breast.tissue","Non.Breast") %>%
+      str_replace("Human_Behaviour","Behavioural") %>%
+      factor(levels = c(
+        "TILsig", #"Immune","ECM", # Denovo
+        "Immune", "Interferon", "Cholesterol", "Fibrosis", #  grusso
+        "ECM", # "Immune", "Interferon", "Cholesterol",  # general
+        "T.Cell", "Cyto.Lympho", "B.Cell", "NK.Cell",
+        "Monocyte", "M.Dendritic", "Neutrophil",
+        "Endothelial", "Fibroblast",
+        "Proliferation","Non.Breast", "Behavioural" # control
+      ) %>% rev()
+      ),
+
+
+
+    # Module_name = str_split_fixed(string = Module_name, pattern = ":", n = 2)[, 1] %>%
+    #
+    #   str_replace("_scaled","") %>%
+    #   str_replace("_Fc","") %>%
+    #   str_replace("Adhesion","Adh.") %>%
+    #   str_replace("Immune","Imm") %>%
+    #   str_replace("Interferon","Ifn") %>%
+    #   str_replace("Cholesterol","Chl") %>%
+    #   str_replace("Fibrosis","Fib") %>%
+    #   str_replace("Proliferation","Prolif") %>%
+    #   str_replace("CLymphocyte","C.Lymph") %>%
+    #   str_replace("MDendritic","M.Dendri") %>%
+    #   # str_replace("Fibroblast","F.blast") %>%
+    #   str_replace_all("_",".") %>%
+    #
+    #   factor(levels = c(
+    #     # "TIL", "TILsig", "TILsig.imm","TILsig.fib",
+    #     "TIL", "TILsig", "TILsig.APP", "TILsig.Imm","TILsig.IFNg",
+    #     "TILsig.ECM", "TILsig.Adh.",
+    #     "Imm1", "Imm2", "Imm3",
+    #     "Ifn1", "Ifn2", "Ifn3",
+    #     "Chl1", "Chl2", "Chl3",
+    #     "Fib1", "Fib2", "Fib3",
+    #     "Prolif1", "Prolif2", "Prolif3",
+    #     "Tcell", "C.Lymph", "Bcell",
+    #     "NKcell", "Monocyte", "M.Dendri",
+    #     "Fibroblast"
+    #   ) %>% rev()
+    #   ),
+    #
+    # # grouping modules
+    # Module_class = case_when(
+    #   str_detect(Module_name, "TIL") ~ "TIL",
+    #   TRUE ~ "Celltype / Proliferation / TIL-localization signatures"
+    # ) %>%
+    #   factor(levels = c(
+    #     "TIL",
+    #     "Celltype / Proliferation / TIL-localization signatures"
+    #   )),
 
     Analysis_group = str_c(Subtype, ":", Analysis)
 
@@ -514,7 +545,111 @@ for(anagroup in geo_inter_merged$Analysis_group %>% unique()){
 
 
 
-# Print plots combined
+# # Print plots combined
+# # ==============================================================================
+#
+# # Common theme
+# th_finher <- theme(
+#   text = element_text(size = outer_text_size),
+#   axis.text.x.bottom = element_text(color = "black"),
+#   axis.title.y = element_blank(),
+#   # strip.background = element_blank(),
+#   strip.text = element_blank(),
+#   panel.grid = element_blank(),
+#   # to adjust space between facet panels
+#   panel.spacing.y = unit(x = 2, units = "pt")
+# )
+#
+# width = 7.5
+# height = 7
+#
+#
+# # TN plot
+# p <- ggpubr::ggarrange(
+#   p_prog$TN + th_finher + labs(x = "Log-OR"),
+#   p_prog_annot$TN + th_finher + labs(x = ""),
+#
+#   p_inter$`TN:AAA.T_or_NoT` + th_finher + labs(x = "Log-OR") + theme(axis.text.y = element_blank()),
+#   p_inter_annot$`TN:AAA.T_or_NoT` + th_finher + labs(x = ""),
+#
+#   ncol = 4,
+#   nrow = 1,
+#   widths = c(.16,.375,.09,.375),
+#   labels = c("A","","B",""),
+#   hjust = c(-0.5,-0.5,0.5,-0.5) #default = -0.5
+# )
+#
+# pdf(file = str_c(out_figures,"geo_tn_prog_plus_inter_taxane.pdf") %>% str_to_lower(),
+#     width = width, height = height)
+# print(p)
+# dev.off()
+#
+#
+# # HER2 plot
+# p <- ggpubr::ggarrange(
+#   p_prog$HER2 + th_finher + labs(x = "Log-OR"),
+#   p_prog_annot$HER2 + th_finher + labs(x = ""),
+#
+#   p_inter$`HER2:AAA_plus_T.TRA_or_NoTRA` + th_finher + labs(x = "Log-OR") + theme(axis.text.y = element_blank()),
+#   p_inter_annot$`HER2:AAA_plus_T.TRA_or_NoTRA` + th_finher + labs(x = ""),
+#
+#   ncol = 4,
+#   nrow = 1,
+#   widths = c(.16,.375,.09,.375),
+#   labels = c("A","","B",""),
+#   hjust = c(-0.5,-0.5,0.5,-0.5) #default = -0.5
+# )
+#
+# pdf(file = str_c(out_figures,"geo_her2_prog_plus_inter_tra.pdf") %>% str_to_lower(),
+#     width = width, height = height)
+# print(p)
+# dev.off()
+#
+#
+# # HR plot
+# p <- ggpubr::ggarrange(
+#   p_prog$HR + th_finher + labs(x = "Log-OR"),
+#   p_prog_annot$HR + th_finher + labs(x = ""),
+#
+#   p_inter$`HR:AAA.T_or_NoT` + th_finher + labs(x = "Log-OR") + theme(axis.text.y = element_blank()),
+#   p_inter_annot$`HR:AAA.T_or_NoT` + th_finher + labs(x = ""),
+#
+#   ncol = 4,
+#   nrow = 1,
+#   widths = c(.16,.375,.09,.375),
+#   labels = c("A","","B",""),
+#   hjust = c(-0.5,-0.5,0.5,-0.5) #default = -0.5
+# )
+#
+# pdf(file = str_c(out_figures,"geo_hr_prog_plus_inter_taxane.pdf") %>% str_to_lower(),
+#     width = width, height = height)
+# print(p)
+# dev.off()
+#
+#
+#
+# # All plot
+# p <- ggpubr::ggarrange(
+#   p_inter$`ALL:AAA_plus_T.TN_or_HER2_or_HR` + th_finher + labs(x = "Log-OR"),
+#   p_inter_annot$`ALL:AAA_plus_T.TN_or_HER2_or_HR` + th_finher + labs(x = ""),
+#   ncol = 2,
+#   nrow = 1,
+#   widths = c(.35,.65)
+#   # labels = c("A","","B",""),
+#   # hjust = c(-0.5,-0.5,0.5,-0.5) #default = -0.5
+# )
+#
+# pdf(file = str_c(out_figures,"geo_all_aaa_t_inter_subtype.pdf") %>% str_to_lower(),
+#     width = width/1.5, height = height+3)
+# print(p)
+# dev.off()
+#
+# #
+# # ==============================================================================
+
+
+
+# Print MTA paper plots
 # ==============================================================================
 
 # Common theme
@@ -523,179 +658,155 @@ th_finher <- theme(
   axis.text.x.bottom = element_text(color = "black"),
   axis.title.y = element_blank(),
   # strip.background = element_blank(),
-  strip.text = element_blank(),
+  # strip.text = element_blank(),
+  strip.text.x = element_blank(),
   panel.grid = element_blank(),
   # to adjust space between facet panels
   panel.spacing.y = unit(x = 2, units = "pt")
 )
 
+
+
 width = 7.5
-height = 7
+height = 8.5
 
 
-# TN plot
+# MTA interaction plot
+# >>>>>>>>>>>>>>>>>>>>
+
 p <- ggpubr::ggarrange(
-  p_prog$TN + th_finher + labs(x = "Log-OR"),
-  p_prog_annot$TN + th_finher + labs(x = ""),
-
-  p_inter$`TN:AAA.T_or_NoT` + th_finher + labs(x = "Log-OR") + theme(axis.text.y = element_blank()),
-  p_inter_annot$`TN:AAA.T_or_NoT` + th_finher + labs(x = ""),
-
-  ncol = 4,
-  nrow = 1,
-  widths = c(.16,.375,.09,.375),
-  labels = c("A","","B",""),
-  hjust = c(-0.5,-0.5,0.5,-0.5) #default = -0.5
-)
-
-pdf(file = str_c(out_figures,"geo_tn_prog_plus_inter_taxane.pdf") %>% str_to_lower(),
-    width = width, height = height)
-print(p)
-dev.off()
-
-
-# HER2 plot
-p <- ggpubr::ggarrange(
-  p_prog$HER2 + th_finher + labs(x = "Log-OR"),
-  p_prog_annot$HER2 + th_finher + labs(x = ""),
-
-  p_inter$`HER2:AAA_plus_T.TRA_or_NoTRA` + th_finher + labs(x = "Log-OR") + theme(axis.text.y = element_blank()),
-  p_inter_annot$`HER2:AAA_plus_T.TRA_or_NoTRA` + th_finher + labs(x = ""),
-
-  ncol = 4,
-  nrow = 1,
-  widths = c(.16,.375,.09,.375),
-  labels = c("A","","B",""),
-  hjust = c(-0.5,-0.5,0.5,-0.5) #default = -0.5
-)
-
-pdf(file = str_c(out_figures,"geo_her2_prog_plus_inter_tra.pdf") %>% str_to_lower(),
-    width = width, height = height)
-print(p)
-dev.off()
-
-
-# HR plot
-p <- ggpubr::ggarrange(
-  p_prog$HR + th_finher + labs(x = "Log-OR"),
-  p_prog_annot$HR + th_finher + labs(x = ""),
+  p_inter$`TN:AAA.T_or_NoT` + th_finher + labs(x = "Log-OR"),
+  p_inter_annot$`TN:AAA.T_or_NoT` + th_finher + labs(x = "") + theme(strip.text.y = element_blank()),
 
   p_inter$`HR:AAA.T_or_NoT` + th_finher + labs(x = "Log-OR") + theme(axis.text.y = element_blank()),
-  p_inter_annot$`HR:AAA.T_or_NoT` + th_finher + labs(x = ""),
+  p_inter_annot$`HR:AAA.T_or_NoT` + th_finher + labs(x = "") + theme(strip.text.y = element_blank()),
 
   ncol = 4,
   nrow = 1,
-  widths = c(.16,.375,.09,.375),
+  # widths = c(.21,.37,.14,.37),
+  widths = c(.23,.36,.13,.36),
   labels = c("A","","B",""),
   hjust = c(-0.5,-0.5,0.5,-0.5) #default = -0.5
 )
 
-pdf(file = str_c(out_figures,"geo_hr_prog_plus_inter_taxane.pdf") %>% str_to_lower(),
+pdf(file = str_c(out_figures,"geo_mta_interaction.pdf") %>% str_to_lower(),
     width = width, height = height)
 print(p)
 dev.off()
 
 
+# Prognosis plot
+# >>>>>>>>>>>>>>
 
-# All plot
 p <- ggpubr::ggarrange(
-  p_inter$`ALL:AAA_plus_T.TN_or_HER2_or_HR` + th_finher + labs(x = "Log-OR"),
-  p_inter_annot$`ALL:AAA_plus_T.TN_or_HER2_or_HR` + th_finher + labs(x = ""),
-  ncol = 2,
+  p_prog$TN + th_finher + labs(x = "Log-OR"),
+  p_prog_annot$TN + th_finher + labs(x = "") + theme(strip.text.y = element_blank()),
+
+  p_prog$HR + th_finher + labs(x = "Log-OR") + theme(axis.text.y = element_blank()),
+  p_prog_annot$HR + th_finher + labs(x = "") + theme(strip.text.y = element_blank()),
+
+  ncol = 4,
   nrow = 1,
-  widths = c(.35,.65)
-  # labels = c("A","","B",""),
-  # hjust = c(-0.5,-0.5,0.5,-0.5) #default = -0.5
+  # widths = c(.21,.37,.14,.37),
+  widths = c(.22,.37,.13,.37),
+  labels = c("A","","B",""),
+  hjust = c(-0.5,-0.5,0.5,-0.5) #default = -0.5
 )
 
-pdf(file = str_c(out_figures,"geo_all_aaa_t_inter_subtype.pdf") %>% str_to_lower(),
-    width = width/1.5, height = height+3)
-print(p)
-dev.off()
-
-#
-# ==============================================================================
-
-
-
-
-
-# GEO TILsig-TIL localization sig correlation plots
-# ==============================================================================
-
-nme <- c("Immune1", "Immune2", "Immune3",
-         "Interferon1", "Interferon2", "Interferon3",
-         "Cholesterol1","Cholesterol2","Cholesterol3",
-         "Fibrosis1", "Fibrosis2", "Fibrosis3",
-         "Proliferation1", "Proliferation2", "Proliferation3",
-         "Tcell", "CLymphocyte", "Bcell", "NKcell", "Monocyte",
-         "MDendritic", "Fibroblast",
-         # "TILsig", "TILsig_imm", "TILsig_fib")
-         "TILsig_scaled", "TILsig_APP_Fc", "TILsig_Immune", "TILsig_IFNg",
-         "TILsig_ECM", "TILsig_Adhesion")
-
-
-plot_corr <- purrr::map(
-
-  c("ALL","HR","HER2", "TN"),
-
-  function(subtype, clin, nme){
-
-    # subtype = "TN"
-    # clin <- clin_finher
-
-    xclin <- switch(subtype,
-                    "ALL" = clin,
-                    "TN" = clin %>%
-                      dplyr::filter(Subtype_ihc == "TN"),
-                    "HER2" = clin %>%
-                      dplyr::filter(Subtype_ihc == "HER2"),
-                    "HR" = clin %>%
-                      dplyr::filter(Subtype_ihc == "HR"))
-
-    xcor <- cor(
-      xclin %>%
-        dplyr::select(all_of(nme)),
-      method = "spearman")
-
-    as_tibble(xcor, rownames = "Rows") %>%
-      tidyr::gather(key = "Columns", value = "Correlation",all_of(nme)) %>%
-      dplyr::mutate(Subtype = subtype)
-  },
-  clin = clin_neoadj,
-  nme
-)
-
-plot_corr <- bind_rows(plot_corr) %>%
-  dplyr::mutate(
-    Rows = factor(Rows, levels =  nme %>% rev()),
-    Columns = factor(Columns, levels =  nme %>% rev()),
-    Subtype = factor(Subtype, levels =  c("ALL","HR","HER2", "TN")),
-    Cor_text = Correlation %>% round(digits = 1) %>% str_replace("0\\.", ".")
-  )
-
-
-
-p <- plot_corr %>%
-  ggplot(aes(x = Columns, y= Rows)) +
-  geom_raster(aes(fill = Correlation)) +
-  geom_text(aes(label = Cor_text), size = 2) +
-  scale_fill_gradient2(high = "#b2182b",# red
-                       low = "#2166ac",# blue
-                       limits = c(-1,1)) +
-  guides(fill = guide_colorbar(title = "Spearman\ncorrelation", title.vjust = 1)) +
-  facet_wrap(facets = ~Subtype , nrow = 2) +
-  theme(legend.position = "bottom",
-        axis.text.x.bottom = element_text(angle = 90, hjust = 1, vjust=.5),
-        axis.title = element_blank())
-
-pdf(file = "results/figures/geo_correlations.pdf",
-    width = 7.5, height = 8)
+pdf(file = str_c(out_figures,"geo_prognosis.pdf") %>% str_to_lower(),
+    width = width, height = height)
 print(p)
 dev.off()
 
 
-
 #
 # ==============================================================================
+
+#
+#
+# # GEO TILsig-TIL localization sig correlation plots
+# # ==============================================================================
+#
+# nme <- c("Immune1", "Immune2", "Immune3",
+#          "Interferon1", "Interferon2", "Interferon3",
+#          "Cholesterol1","Cholesterol2","Cholesterol3",
+#          "Fibrosis1", "Fibrosis2", "Fibrosis3",
+#          "Proliferation1", "Proliferation2", "Proliferation3",
+#          "Tcell", "CLymphocyte", "Bcell", "NKcell", "Monocyte",
+#          "MDendritic", "Fibroblast",
+#          "TILsig", "TILsig_APP_Fc", "TILsig_Immune", "TILsig_IFNg",
+#          "TILsig_ECM", "TILsig_Adhesion")
+#
+#
+# plot_corr <- purrr::map(
+#
+#   c("ALL","HR","HER2", "TN"),
+#
+#   function(subtype, clin, nme){
+#
+#     # subtype = "TN"
+#     # clin <- clin_finher
+#
+#     xclin <- switch(subtype,
+#                     "ALL" = clin,
+#                     "TN" = clin %>%
+#                       dplyr::filter(Subtype_ihc == "TN"),
+#                     "HER2" = clin %>%
+#                       dplyr::filter(Subtype_ihc == "HER2"),
+#                     "HR" = clin %>%
+#                       dplyr::filter(Subtype_ihc == "HR"))
+#
+#     xcor <- cor(
+#       xclin %>%
+#         dplyr::rename(TILsig_unscaled = "TILsig",
+#                       TILsig = "TILsig_scaled") %>%
+#         dplyr::select(all_of(nme)),
+#       method = "spearman")
+#
+#     as_tibble(xcor, rownames = "Rows") %>%
+#       tidyr::gather(key = "Columns", value = "Correlation",all_of(nme)) %>%
+#       dplyr::mutate(Subtype = subtype)
+#   },
+#   clin = clin_neoadj,
+#   nme
+# )
+#
+# plot_corr <- bind_rows(plot_corr) %>%
+#   dplyr::mutate(
+#     Rows = factor(Rows, levels =  nme %>% rev()),
+#     Columns = factor(Columns, levels =  nme %>% rev()),
+#     Subtype = factor(Subtype, levels =  c("TN","HER2","HR","ALL")),
+#     Cor_text = Correlation %>% round(digits = 1) %>% str_replace("0\\.", ".")
+#   )
+#
+#
+#
+# p <- plot_corr %>%
+#   ggplot(aes(x = Columns, y= Rows)) +
+#   geom_raster(aes(fill = Correlation)) +
+#   geom_text(aes(label = Cor_text), size = 2) +
+#   scale_fill_gradient2(high = "#b2182b",# red
+#                        low = "#2166ac",# blue
+#                        limits = c(-1,1)) +
+#   guides(fill = guide_colorbar(title = "Spearman\ncorrelation", title.vjust = 1)) +
+#   facet_wrap(facets = ~Subtype , nrow = 2) +
+#   theme(legend.position = "bottom",
+#         axis.text.x.bottom = element_text(angle = 90, hjust = 1, vjust=.5),
+#         axis.title = element_blank())
+#
+# pdf(file = "results/figures/geo_correlations.pdf",
+#     width = 7.5, height = 8.5)
+# print(p)
+# dev.off()
+#
+#
+#
+# #
+# # ==============================================================================
+#
+#
+
+
+
+
 

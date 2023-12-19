@@ -84,6 +84,20 @@ clin$Age_bin_50 %>% table()
 # 1374  1571
 
 
+# Verification !!!!!!!!!!!
+
+# The original Age_bin contains binarized age data using different cutoffs.
+#
+# Hence to avoid ambigity, add a new variable Age_bin_50 that categorize age
+# using 50 years as cutoff.
+# Age_bin_50 to maximaize the samples with Age data
+
+# End of verification !!!!!!!!!!!
+
+
+
+
+
 # Grade
 # >>>>>
 
@@ -117,6 +131,13 @@ clin$Grade_bin %>%  table()
 # 1053 1231
 
 
+# Verification !!!!!!!!!!!!
+
+# No need to introduce Grade_bin, leave it to the user
+
+# End of verification !!!!!!!!!!!!
+
+
 
 # Node
 # >>>>
@@ -148,9 +169,17 @@ clin$Node[ (!is.na(clin$Node)) & is.na(clin$Node_bin)]
 # Node_bin cotains maximum number of nodal information.
 # Explore why the three samples with Node counts are not categorized.
 
+
 table(clin$Node_bin)
 # neg  pos
 # 923 1452
+
+# Verification !!!!!!!!!!!!!
+
+# This anomaly is from GSE4779.
+# In the original file N- means NA
+
+# End of verification !!!!!!!!!!!!!
 
 
 
@@ -195,6 +224,13 @@ table(clin$Size_bin)
 # 2533   455
 # small = T0-1, large = T2-3-4 (>T1)
 
+# Verification !!!!!!!!!!!!!
+
+# This anomaly is from GSE4779.
+# In the original file T- means NA
+
+# End of verification !!!!!!!!!!!!!
+
 
 
 # Response
@@ -233,6 +269,17 @@ clin$Response %>% table()
 # npCR  pCR
 # 2144  744
 
+# Verification !!!!!!!!!!!!!
+
+# The 488 samples with Response = NA and Response_path = TRUE is due to
+# clerical error in the manual curation step of GSE25066.
+# The manual curation step failed to update Response = Response_path in GSE25066.
+# This is updated in the manual curation code related to GSE25066 in the following file;
+# ~/projects/on/treatment-curated-breast-dataset/src/r/s3_manual_sample_characterisitic_curation.R
+
+# End of verification !!!!!!!!!!!!!
+
+
 
 
 # Follow up
@@ -245,13 +292,24 @@ clin %>%
   dplyr::summarise(N = n())
 #   Event_dfs Time_dfs     N
 # 1 FALSE     FALSE     2344 ! No followup data
-# 2 FALSE     TRUE         7 ! Missing event
-# 3 TRUE      FALSE      108 ! Missing time
+# 2 FALSE     TRUE         7 ! Missing event #  "GSE16391"; Verified; Missing in original file.
+# 3 TRUE      FALSE      108 ! Missing time # "GSE16446"; Verified; 7 samples have no time data
+#                                             "GSE19615"; Verified; 101 samples have no time data
 # 4 TRUE      TRUE      1277 Consider only samples with both Event and Time data
 
 
 # Consider only samples with both Event and Time data
 # !!! Explore why Time data has no matching Event data and vice-versa
+
+
+# Verification !!!!!!!!!!!!!!!
+
+# 2 FALSE     TRUE         7 ! Missing event #  "GSE16391"; Verified; Missing in original file.
+# 3 TRUE      FALSE      108 ! Missing time # "GSE16446"; Verified; 7 samples have no time data
+#                                             "GSE19615"; Verified; 101 samples have no time data
+
+# End of verification !!!!!!!!!
+
 
 
 
@@ -316,6 +374,37 @@ clin %>%
 # 4 TRUE  TRUE  TRUE         2838 Clean Subtype IHC
 
 # Subtype_ihc is defined for samples with both Hr and Her2 status
+
+
+# Verification !!!!!!!!!!!!!!!!
+
+x <- clin[!is.na(clin$Er) & is.na(clin$Pr),]
+dim(x)  # 325 93
+x$Series_matrix_accession %>% table()
+# GSE16446 GSE22093 GSE23988 GSE25066 GSE41998 GSE45255  GSE4779  GSE6861 GSE69031
+# 120       98       61        1        1        5        2       36        1
+
+x <- clin[clin$Series_matrix_accession %in% c("GSE16446", "GSE22093", "GSE23988", "GSE25066", "GSE41998", "GSE45255", "GSE4779",  "GSE6861", "GSE69031"), ]
+x$Series_matrix_accession %>% table()
+# GSE16446 GSE22093 GSE23988 GSE25066 GSE41998 GSE45255  GSE4779  GSE6861 GSE69031
+# 120      103       61      508      279      139      102      161      118
+
+
+# Datasets in which 325 samples have only Er status and no Pr status available.
+
+# GSE16446: PR status not available
+# GSE22093: PR status not available; ER available for 98
+# GSE23988: PR status not available
+# GSE25066: PR set as NA for one more sample than taht for ER status (Intermediate score = NA)
+# GSE41998: PR unknown for one sample
+# GSE45255: PR unknown for five sample
+# GSE4779: PR unknown for two sample
+# GSE6861: PR unknown for 36 samples; Er=neg for all samples from literature
+# GSE69031: PR unknown for two samples; 12 samples were removed during
+#           expression data integration due to NA expression (130-12=118),
+#           which may include one sample with PR = NA.
+
+# End verification !!!!!!!!!!!!!!!!
 
 
 

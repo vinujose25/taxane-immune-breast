@@ -14,7 +14,8 @@
 # 1. Load and summarize clin_neoadj.
 # 2. Explore prognosis.
 # 3. Explore prognosis heterogenity.
-# 4. Save Robjects
+# 4. Analysis summary
+# 5. Save Robjects
 
 
 
@@ -22,37 +23,6 @@
 # ==============================================================================
 
 load("results/data/clin_neoadj.RData")
-# load("results/data/expr_neoadj.RData") # for TILsig computation
-# load("results/data/tilsig_clean.RData") # for TILsig computation
-#
-#
-# # Update clin_neoadj with TILsig score
-# # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# sig <- tilsig_clean$ALL %>%
-#   dplyr::select(Direction, Ncbi_gene_id1)
-# nrow(sig) # 994
-#
-# sig <- sig %>%
-#   dplyr::filter(Ncbi_gene_id1 %in% all_of(expr_neoadj$Ncbi_gene_id))
-# nrow(sig) # 632
-#
-# # Compute module score and update clin_finher
-# score <- get_module_score(
-#   x = expr_neoadj %>% t_tibble(names_x_desc = "Sample_geo_accession"),
-#   module_list = list(TILsig_imm = sig %>%
-#                        dplyr::filter(Direction == 1) %>%
-#                        dplyr::mutate(Direction = 1), # average imm
-#                      TILsig_fib = sig %>%
-#                        dplyr::filter(Direction == -1) %>%
-#                        dplyr::mutate(Direction = 1), # average fib
-#                      TILsig = sig), # weighted average
-#   by = "Ncbi_gene_id1"
-# ) %>%
-#   dplyr::mutate(TILsig_imm = TILsig_imm %>% genefu::rescale(q=0.05),
-#                 TILsig_fib = TILsig_fib %>% genefu::rescale(q=0.05),
-#                 TILsig = TILsig %>% genefu::rescale(q=0.05))
-#
-# clin_neoadj <- clin_neoadj %>% left_join(score, by = "Sample_geo_accession")
 
 
 
@@ -235,6 +205,7 @@ geo_prog <- purrr::map(
 
   c("TN", "HR-HER2+", "HR+HER2+", "HER2", "HR", "ALL"),
 
+
   function(subtype, clin){
 
     print(subtype)
@@ -266,17 +237,36 @@ geo_prog <- purrr::map(
     # Per sig prognosis + heterogenity
     xx <- purrr::map(
 
-      # c("TILsig", "TILsig_imm", "TILsig_fib",
-      c("TILsig_scaled",
-        "TILsig_APP_Fc", "TILsig_Immune", "TILsig_IFNg", #"TILsig_Innate",
-        "TILsig_ECM", "TILsig_Adhesion",
-        "Immune1", "Immune2", "Immune3",
-        "Interferon1", "Interferon2", "Interferon3",
-        "Cholesterol1", "Cholesterol2", "Cholesterol3",
-        "Fibrosis1", "Fibrosis2", "Fibrosis3",
-        "Proliferation1", "Proliferation2", "Proliferation3",
-        "Tcell", "CLymphocyte", "Bcell",
-        "NKcell", "Monocyte", "MDendritic", "Fibroblast"),
+
+      c(
+        "scaled_Denovo_TILsig",
+        "scaled_Denovo_Immune",
+        "scaled_Denovo_ECM",
+
+        "scaled_Gruosso2019_Immune",
+        "scaled_Gruosso2019_Interferon",
+        "scaled_Gruosso2019_Cholesterol",
+        "scaled_Gruosso2019_Fibrosis",
+
+        "scaled_General_Immune",
+        "scaled_General_Interferon",
+        "scaled_General_Cholesterol",
+        "scaled_General_ECM",
+
+        "MCPcounter_Tcell",
+        "MCPcounter_Cyto.Lymphocyte",
+        "MCPcounter_B.Lineage",
+        "MCPcounter_NK.Cells",
+        "MCPcounter_Monocytic.Lineage",
+        "MCPcounter_Myeloid.Dendritic",
+        "MCPcounter_Neutrophils",
+        "MCPcounter_Endothelial",
+        "MCPcounter_Fibroblasts",
+
+        "scaled_Control_Proliferation",
+        "scaled_Control_Non.breast.tissue",
+        "scaled_Control_Human_Behaviour"
+        ),
 
       function(sig, xclin){
 
@@ -348,6 +338,7 @@ geo_prog <- purrr::map(
 
 names(geo_prog) <- c("TN", "HR-HER2+", "HR+HER2+", "HER2", "HR", "ALL")
 
+
 # !!!! Save geo_prog late r in the script
 
 #
@@ -402,17 +393,35 @@ geo_prog_het <- purrr::map(
     # Per-subtype, per-sig heterogenity assesment
     xx <- purrr::map(
 
-      # c("TILsig", "TILsig_imm", "TILsig_fib",
-      c("TILsig_scaled",
-        "TILsig_APP_Fc", "TILsig_Immune", "TILsig_IFNg", #"TILsig_Innate",
-        "TILsig_ECM", "TILsig_Adhesion",
-        "Immune1", "Immune2", "Immune3",
-        "Interferon1", "Interferon2", "Interferon3",
-        "Cholesterol1", "Cholesterol2", "Cholesterol3",
-        "Fibrosis1", "Fibrosis2", "Fibrosis3",
-        "Proliferation1", "Proliferation2", "Proliferation3",
-        "Tcell", "CLymphocyte", "Bcell",
-        "NKcell", "Monocyte", "MDendritic", "Fibroblast"),
+      c(
+        "scaled_Denovo_TILsig",
+        "scaled_Denovo_Immune",
+        "scaled_Denovo_ECM",
+
+        "scaled_Gruosso2019_Immune",
+        "scaled_Gruosso2019_Interferon",
+        "scaled_Gruosso2019_Cholesterol",
+        "scaled_Gruosso2019_Fibrosis",
+
+        "scaled_General_Immune",
+        "scaled_General_Interferon",
+        "scaled_General_Cholesterol",
+        "scaled_General_ECM",
+
+        "MCPcounter_Tcell",
+        "MCPcounter_Cyto.Lymphocyte",
+        "MCPcounter_B.Lineage",
+        "MCPcounter_NK.Cells",
+        "MCPcounter_Monocytic.Lineage",
+        "MCPcounter_Myeloid.Dendritic",
+        "MCPcounter_Neutrophils",
+        "MCPcounter_Endothelial",
+        "MCPcounter_Fibroblasts",
+
+        "scaled_Control_Proliferation",
+        "scaled_Control_Non.breast.tissue",
+        "scaled_Control_Human_Behaviour"
+        ),
 
       function(sig, xclin){
 
@@ -538,16 +547,35 @@ geo_prog_het <- purrr::map(
     )
 
     # names(xx) <- c("TILsig", "TILsig_imm", "TILsig_fib",
-    names(xx) <-   c("TILsig_scaled",
-                     "TILsig_APP_Fc", "TILsig_Immune", "TILsig_IFNg", #"TILsig_Innate",
-                     "TILsig_ECM", "TILsig_Adhesion",
-                     "Immune1", "Immune2", "Immune3",
-                     "Interferon1", "Interferon2", "Interferon3",
-                     "Cholesterol1", "Cholesterol2", "Cholesterol3",
-                     "Fibrosis1", "Fibrosis2", "Fibrosis3",
-                     "Proliferation1", "Proliferation2", "Proliferation3",
-                     "Tcell", "CLymphocyte", "Bcell",
-                     "NKcell", "Monocyte", "MDendritic", "Fibroblast")
+    names(xx) <-   c(
+      "scaled_Denovo_TILsig",
+      "scaled_Denovo_Immune",
+      "scaled_Denovo_ECM",
+
+      "scaled_Gruosso2019_Immune",
+      "scaled_Gruosso2019_Interferon",
+      "scaled_Gruosso2019_Cholesterol",
+      "scaled_Gruosso2019_Fibrosis",
+
+      "scaled_General_Immune",
+      "scaled_General_Interferon",
+      "scaled_General_Cholesterol",
+      "scaled_General_ECM",
+
+      "MCPcounter_Tcell",
+      "MCPcounter_Cyto.Lymphocyte",
+      "MCPcounter_B.Lineage",
+      "MCPcounter_NK.Cells",
+      "MCPcounter_Monocytic.Lineage",
+      "MCPcounter_Myeloid.Dendritic",
+      "MCPcounter_Neutrophils",
+      "MCPcounter_Endothelial",
+      "MCPcounter_Fibroblasts",
+
+      "scaled_Control_Proliferation",
+      "scaled_Control_Non.breast.tissue",
+      "scaled_Control_Human_Behaviour"
+      )
     xx
 
   },
@@ -563,7 +591,61 @@ names(geo_prog_het) <- c("TN", "HR-HER2+", "HR+HER2+", "HER2", "HR", "ALL")
 
 
 
-# 4. Save Robjects
+
+
+# 4. Analysis summary tables
+# ==============================================================================
+
+# geo_inter
+
+summarize_geo_prog <- function(x){
+
+  # x <- geo_prog
+
+
+  x <- purrr::map(x,
+                  function(xx, prog){
+
+                    nme <- c("Module_name", "Estimate", "Lower_ci", "Upper_ci", "P", "P_adj", "Q", "Q_p", "I2")
+                    xx <- xx[ , nme] %>%
+                      dplyr::mutate(
+                        Log_OR = str_c(round(Estimate, digits = 1),
+                                       " (",
+                                       round(Lower_ci,digits=1), "-",
+                                       round(Upper_ci,digits=1),
+                                       ")"),
+                        P = round(P, digits = 3),
+                        P_adj = round(P_adj, digits = 3),
+                        Q = round(Q, digits = 3),
+                        Q_p = round(Q_p, digits = 3),
+                        I2 = round(I2, digits = 3)
+                      )
+
+                    xx %>%
+                      dplyr::select(c("Module_name",
+                                      "Log_OR", "P", "P_adj", "Q", "Q_p", "I2"))
+
+
+                  })
+
+  return(x)
+
+}
+
+xout <- summarize_geo_prog(x = geo_prog)
+
+write_xlsx(xout[c("TN","HR")], path = str_c(out_tables,"geo_prognosis_summary.xlsx"))
+
+
+
+#
+# ==============================================================================
+
+
+
+
+
+# 5. Save Robjects
 # ==============================================================================
 
 # geo_prog : Prognosis summary
