@@ -12,7 +12,7 @@
 
 
 
-# Script strucutre
+# Script structure
 # >>>>>>>>>>>>>>>>
 # 1. Load clinical data
 # 2. Format clinical data
@@ -88,9 +88,9 @@ clin$Age_bin_50 %>% table()
 
 # The original Age_bin contains binarized age data using different cutoffs.
 #
-# Hence to avoid ambigity, add a new variable Age_bin_50 that categorize age
+# Hence to avoid ambiguity, add a new variable Age_bin_50 that categorize age
 # using 50 years as cutoff.
-# Age_bin_50 to maximaize the samples with Age data
+# Age_bin_50 to maximize the samples with Age data
 
 # End of verification !!!!!!!!!!!
 
@@ -166,7 +166,7 @@ clin %>%
 clin$Node[ (!is.na(clin$Node)) & is.na(clin$Node_bin)]
 # [1] "N-" "N-" "N-"
 
-# Node_bin cotains maximum number of nodal information.
+# Node_bin contains maximum number of nodal information.
 # Explore why the three samples with Node counts are not categorized.
 
 
@@ -356,7 +356,7 @@ clin[is.na(clin$Pr) & !is.na(clin$Hr), ] %>%
 # 2 pos   NA    pos      81
 
 # Identical Er and Hr status suggests that for some samples Hr status is
-# defined purly based on Er status.
+# defined purely based on Er status.
 # Of note, some studies only have Hr status, not Er and Pr status.
 # !!!!!! Verify this in treatment-curated-breast-dataset !!!!!!!!!!!!
 
