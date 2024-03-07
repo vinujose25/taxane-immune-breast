@@ -1,3 +1,8 @@
+# Exploring microtubule-targeting-agent - tumor-immune-response interaction on clinical response in breast cancer.
+Version 1.0.0 
+
+Code associated with the following research project.
+
 # Microtubule targeting agents influence the clinical benefit of immune response in early breast cancer
 
 Vinu Jose $^{1}$, David Venet $^{1}$, Francoise Rothe $^{1}$, Samira Majjaj $^{1}$, Delphine Vincent $^{1}$, Laurence Buisseret $^{1,2}$, Roberto Salgado $^{1,3,4}$, Nicolas Sirtaine $^{5,6}$, Stefan Michiels $^{1,7}$, Sherene Loi $^{1,4,8}$, Heikki Joensuu $^{9}$, Christos Sotiriou $^{1,2}$
