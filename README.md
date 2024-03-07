@@ -1,6 +1,6 @@
 # Microtubule targeting agents influence the clinical benefit of immune response in early breast cancer
 
-Vinu Jose^1^, David Venet^1^, Francoise Rothe^1^, Samira Majjaj^1^, Delphine Vincent^1^, Laurence Buisseret^1,2^, Roberto Salgado^1,3,4^, Nicolas Sirtaine^5,6^, Stefan Michiels^1,7^, Sherene Loi^1,4,8^, Heikki Joensuu^9^, Christos Sotiriou^1,2^
+Vinu Jose $^{1}$, David Venet $^{1}$, Francoise Rothe $^{1}$, Samira Majjaj $^{1}$, Delphine Vincent $^{1}$, Laurence Buisseret $^{1,2}$, Roberto Salgado $^{1,3,4}$, Nicolas Sirtaine $^{5,6}$, Stefan Michiels $^{1,7}$, Sherene Loi $^{1,4,8}$, Heikki Joensuu $^{9}$, Christos Sotiriou $^{1,2}$
 
 1. JC Heuson Breast Cancer Translational Research Laboratory (BCTL), Institut Jules Bordet - Université Libre de Bruxelles, 90 Rue Meylemeersch, 1070 Anderlecht, Belgium.
 2. Department of Medical Oncology, Institut Jules Bordet - Université Libre de Bruxelles, 90 Rue Meylemeersch, 1070 Anderlecht, Belgium
