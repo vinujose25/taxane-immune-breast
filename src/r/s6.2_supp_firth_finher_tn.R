@@ -1,15 +1,16 @@
-# s6_supp_firth_finher_tn_v2.R
+# s6.2_supp_firth_finher_tn.R
 
 
 # What the script does?
 # >>>>>>>>>>>>>>>>>>>>>
 #
-# Explore whether firth penalization reduces CI width
-#
+# Explore whether "coxphf: Cox Regression with Firth's Penalized Likelihood" reduces CI width.
+# Firth's Penalization did not reduce CI width. !!!!!!!!!!!
 
 
 
-# Script strucutre
+
+# Script structure
 # >>>>>>>>>>>>>>>>
 # 1. Load and format clinical data.
 # 2. Explore prognosis and chemo interaction in TN
@@ -23,7 +24,6 @@
 # ==============================================================================
 
 load("results/data/clin_finher_finneo.RData")
-# load("results/data/clin_finher.RData")
 
 
 # Format clinical data
@@ -113,6 +113,8 @@ clin_finher_finneo <- clin_finher_finneo %>%
                       "Chemo"
                       ),
                    ~(!is.na(.x)))
+
+dim(clin_finher_finneo) #[1] 118 119 # 2 NAs
 
 #
 # ==============================================================================
@@ -280,6 +282,12 @@ finher_tn[["inter"]] <- purrr::map(
   clin = clin_finher_finneo
 
 )
+# "OS" interaction model with "MCPcounter_Fibroblasts" raises the following warning
+# with maxstep = 0.5 and maxit = 1000 !!!!!
+# Warning message:
+#   In coxphf(formula = as.formula(formula_chr), data = xdata, maxit = 1000) :
+#   Convergence in estimating profile likelihood CI or p-values not attained for all variables.
+# Consider re-run with smaller maxstep and larger maxit.
 
 names(finher_tn[["inter"]]) <- c("RFS", "DDFS", "OS")
 
@@ -324,7 +332,7 @@ p <- ggplot(ggdf, aes(x = variable, y = value, group = group_var)) +
        subtitle = "FinHER TN prognostic models") +
   facet_wrap(~event, ncol = 1)
 
-pdf(file = str_c(out_figures,"Firth_vs_Std_COX-FinHER_TN_Prognosis.pdf"))
+pdf(file = str_c(out_figures,"FinHER_TN_Prognosis_Firth_vs_Std_COX.pdf"))
 print(p)
 dev.off()
 
@@ -341,7 +349,7 @@ p <- ggplot(ggdf, aes(x = variable, y = log(value), group = group_var)) +
        subtitle = "FinHER TN prognostic models") +
   facet_wrap(~event, ncol = 1)
 
-pdf(file = str_c(out_figures,"Firth_vs_Std_COX-FinHER_TN_Prognosis_log.pdf"))
+pdf(file = str_c(out_figures,"FinHER_TN_Prognosis_log_Firth_vs_Std_COX.pdf"))
 print(p)
 dev.off()
 
@@ -378,7 +386,7 @@ p <- ggplot(ggdf, aes(x = variable, y = value, group = group_var)) +
        subtitle = "FinHER TN interaction models") +
   facet_wrap(~event, ncol = 1)
 
-pdf(file = str_c(out_figures,"Firth_vs_Std_COX-FinHER_TN_Interaction.pdf"))
+pdf(file = str_c(out_figures,"FinHER_TN_Interaction_Firth_vs_Std_COX.pdf"))
 print(p)
 dev.off()
 
@@ -395,7 +403,7 @@ p <- ggplot(ggdf, aes(x = variable, y = log(value), group = group_var)) +
        subtitle = "FinHER TN interaction models") +
   facet_wrap(~event, ncol = 1)
 
-pdf(file = str_c(out_figures,"Firth_vs_Std_COX-FinHER_TN_Interaction_log.pdf"))
+pdf(file = str_c(out_figures,"FinHER_TN_Interaction_Firth_vs_Std_COX_log.pdf"))
 print(p)
 dev.off()
 
@@ -404,4 +412,13 @@ dev.off()
 # ==============================================================================
 
 
+
+
+# Clear memory
+# ==============================================================================
+
+rm(clin_finher_finneo, finher_tn)
+
+#
+# ==============================================================================
 

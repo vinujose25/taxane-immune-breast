@@ -1,21 +1,22 @@
-# finher_her2_ph_fix.R
+# s7.2_finher_her2_ph_fix.R
 
 
 # What the script does?
 # >>>>>>>>>>>>>>>>>>>>>
 #
-# Acounting for non-PH in Denovo_TILsig * Chemo interaction models on RFS in HER2
+# Accounting for non-PH in Denovo_TILsig * Chemo interaction models on RFS in HER2
 
 # Note on PH fixation
 # >>>>>>>>>>>>>>>>>>>
 # Step-function ref:
+# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6015946/
 # https://stats.stackexchange.com/questions/144923/extended-cox-model-and-cox-zph/238964#238964
 # https://stats.stackexchange.com/questions/317336/interpreting-r-coxph-cox-zph
 # http://www.sthda.com/english/wiki/cox-model-assumptions
 
 
 
-# Script strucutre
+# Script structure
 # >>>>>>>>>>>>>>>>
 # 1. Load and format clinical data.
 # 2. Explore non-PH in TRA interaction models
@@ -62,7 +63,7 @@ xdata <- clin_finher_finneo  %>%
 # RFS HER2 chemo interaction
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-pdf("results/figures/PH_diagnosis_rfs_her2_chemo_interaction_regular_model.pdf",
+pdf(str_c(out_figures, "FinHER_HER2_PH_diagnosis_RFS_TILsig_chemo_interaction_regular_model.pdf"),
     width = 5, height = 5, onefile = T)
 
 for(i in c("scaled_Denovo_TILsig")){
@@ -122,7 +123,7 @@ xdata_ddfs_split <- survSplit(formula = as.formula(xformula),
 
 
 
-pdf("results/figures/PH_diagnosis_rfs_her2_chemo_interaction_phfixed_model.pdf",
+pdf(str_c(out_figures, "FinHER_HER2_PH_diagnosis_RFS_TILsig_chemo_interaction_phfixed_model.pdf"),
     width = 5, height = 5, onefile = T)
 
 for(i in c("scaled_Denovo_TILsig")){
@@ -181,6 +182,15 @@ dev.off()
 #
 # ==============================================================================
 
+
+
+# Clear memory
+# ==============================================================================
+
+rm(clin_finher_finneo, xdata, xdata_ddfs_split)
+
+#
+# ==============================================================================
 
 
 

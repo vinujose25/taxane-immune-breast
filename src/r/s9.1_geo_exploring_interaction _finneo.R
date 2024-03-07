@@ -1,24 +1,23 @@
-# s4_exploring_interaction.R
+# s9.1_geo_exploring_interaction_finneo.R
 
 
 
 # What the script does?
 # >>>>>>>>>>>>>>>>>>>>>
 # Explore the interaction between
-#   1) Arm, Signature, and pCR within each Subtype, and
-#   2) Subtype, Signature and pCR within each Arm.
-# Account for study heterogenity.
+#   1) Arm, Signature, and pCR within each Subtype
+# Account for study heterogeneity.
 # Prepare data necessary to plot prognostic plots.
 
 
 
-# Script strucutre
+# Script structure
 # >>>>>>>>>>>>>>>>
 # 1. Load data.
 # 2. Structure analysis
-# 3. Interaction test
+# 3. Interaction analysis
 # 4. Analysis summary tables
-# 5. Save Robjects odf interaction summaries
+# 5. Save Robjects of interaction summaries
 
 
 
@@ -114,42 +113,22 @@ clin_neoadj_finneo %>%
 # 10      HR pos       AAA  91
 
 
-# TN analysis
-# 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
-# 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
-# 3. Per subtype global interaction: all-Arm * Sig * pCR
-
-
-# HER2 analysis
-# 1. Per subtype trastuzumab interaction: AAA+Taxane+/-Trastuzumab * Sig * pCR
-
-
-# HR analysis
-# 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
-# 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
-# 3. Per subtype global interaction: all-Arm * Sig * pCR
-
-
-# Pan-Subtype (ALL) analysis
-# 1. Subtype interaction in AAA+Taxane: TN/HER2/HR * Sig * pCR
-# 2. Subtype interaction in AAA+noTaxane: TN/HR * Sig * pCR
-# 3. Subtype interaction in A0A+Taxane: TN/HR * Sig * pCR
-
 
 # Analysis note: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #
 # 1. Focus the analysis on AAA containing regimens due to large sample size.
-# 2. Make plots accordingly.
-# 3. Keep the other analysis as supplimentary.
+# 2. Discard AOA regimen
+# 3. Discard HER2 subtype (no AAA+/-T interaction analysis possible)
 # 4. Script structure:
 #     Create geo_inter (interaction summary) list object.
-#     Each elemet represent all anlysis done on each subtype.
+#     Each element represent all analysis done on each subtype.
 #
 
 
 
 # All neoadj regimen with Strata info
 clin_neoadj_finneo %>%
+  dplyr::filter(Subtype_ihc != "HER2") %>%
   dplyr::group_by(
     Subtype = Subtype_ihc,
     Hr,
@@ -166,34 +145,22 @@ clin_neoadj_finneo %>%
 # 4       TN neg     AAA+T     GSE25066:AAA+T 119    43    36.134454
 # 5       TN neg     AAA+T     GSE32646:AAA+T  26    10    38.461538
 # 6       TN neg     AAA+T     GSE42822:AAA+T  24    12    50.000000
-# 7       TN neg     A0A+T     GSE25066:A0A+T  25     6    24.000000
-# 8       TN neg     A0A+T     GSE41998:A0A+T 125    51    40.800000
+# 7       TN neg     A0A+T     GSE25066:A0A+T  25     6    24.000000 # not used in analysis
+# 8       TN neg     A0A+T     GSE41998:A0A+T 125    51    40.800000 # not used in analysis
 # 9       TN neg       AAA       GSE20271:AAA  28     4    14.285714
 # 10      TN neg       AAA       GSE22093:AAA  55    18    32.727273
 
-# 11    HER2 neg     AAA+T     GSE20194:AAA+T  25    13    52.000000
-# 12    HER2 neg     AAA+T     GSE32646:AAA+T  18     9    50.000000
-# 13    HER2 neg     AAA+T     GSE50948:AAA+T  37     9    24.324324
-# 14    HER2 neg AAA+T+TRA GSE42822:AAA+T+TRA  15    10    66.666667
-# 15    HER2 neg AAA+T+TRA GSE50948:AAA+T+TRA  43    25    58.139535
-
-# 16    HER2 pos     AAA+T     GSE20194:AAA+T  25     4    16.000000
-# 17    HER2 pos     AAA+T     GSE32646:AAA+T  16     3    18.750000
-# 18    HER2 pos     AAA+T     GSE50948:AAA+T  14     4    28.571429
-# 19    HER2 pos AAA+T+TRA GSE42822:AAA+T+TRA   9     2    22.222222
-# 20    HER2 pos AAA+T+TRA GSE50948:AAA+T+TRA  20     6    30.000000
-
-# 21      HR pos     AAA+T     GSE20194:AAA+T 141     9     6.382979
-# 22      HR pos     AAA+T     GSE20271:AAA+T  44     3     6.818182
-# 23      HR pos     AAA+T     GSE23988:AAA+T  32     7    21.875000
-# 24      HR pos     AAA+T     GSE25066:AAA+T 194    22    11.340206
-# 25      HR pos     AAA+T     GSE32646:AAA+T  55     5     9.090909
-# 26      HR pos     AAA+T     GSE42822:AAA+T  29     8    27.586207
-# 27      HR pos     AAA+T     GSE50948:AAA+T  26     4    15.384615
-# 28      HR pos     A0A+T     GSE25066:A0A+T  35     3     8.571429
-# 29      HR pos     A0A+T     GSE41998:A0A+T 104    12    11.538462
-# 30      HR pos       AAA       GSE20271:AAA  49     3     6.122449
-# 31      HR pos       AAA       GSE22093:AAA  42    10    23.809524
+# 11      HR pos     AAA+T     GSE20194:AAA+T 141     9     6.382979
+# 12      HR pos     AAA+T     GSE20271:AAA+T  44     3     6.818182
+# 13      HR pos     AAA+T     GSE23988:AAA+T  32     7    21.875000
+# 14      HR pos     AAA+T     GSE25066:AAA+T 194    22    11.340206
+# 15      HR pos     AAA+T     GSE32646:AAA+T  55     5     9.090909
+# 16      HR pos     AAA+T     GSE42822:AAA+T  29     8    27.586207
+# 17      HR pos     AAA+T     GSE50948:AAA+T  26     4    15.384615
+# 18      HR pos     A0A+T     GSE25066:A0A+T  35     3     8.571429 # not used in analysis
+# 19      HR pos     A0A+T     GSE41998:A0A+T 104    12    11.538462 # not used in analysis
+# 20      HR pos       AAA       GSE20271:AAA  49     3     6.122449
+# 21      HR pos       AAA       GSE22093:AAA  42    10    23.809524
 
 
 # Note !!!!!
@@ -207,22 +174,6 @@ clin_neoadj_finneo %>%
 
 # 3. Interaction tests
 # ==============================================================================
-
-# geo_inter <- vector(mode = "list", length = 4)
-# names(geo_inter) <- c("TN", "HER2", "HR", "ALL")
-
-
-# geo_inter <- vector(mode = "list", length = 2)
-# names(geo_inter) <- c("TN", "HR")
-#
-# geo_inter <- purrr::map(
-#   geo_inter,
-#   ~{
-#     x <- vector(mode = "list", length = 2)
-#     names(x) <- c("individual.sig", "pooled.sig")
-#     x
-#   }
-# )
 
 
 geo_inter <- vector(mode = "list", length = 2)
@@ -246,39 +197,35 @@ geo_inter <- purrr::map(
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
-# 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
-# 3. Per subtype global interaction: all-Arm * Sig * pCR
+# 2. Irrelevant - Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+# 3. Irrelevant - Per subtype global interaction: all-Arm * Sig * pCR
 
 # Naming convention:
-# Name analysis based on backbone(non-interacting) therapy and interaction tested therpies.
-# "." seperates back bone therpy from interaction tested therpaies/subtypes.
+# Name analysis based on backbone(non-interacting) therapy and interaction tested therapies.
+# "." separates back bone therapy from interaction tested therapies/subtypes.
 # The part left to the "." represents backbone therapy and
-#   the part to the right represents interacion tested therapies or subtypes.
+#   the part to the right represents interaction tested therapies or subtypes.
 
-# Recommanded R naming convention:
-# Name should only contains letters, numbers underscre and dot.
+# Recommended R naming convention:
+# Name should only contains letters, numbers, underscore and dot.
 # Ref:
 
 
 # Analysis structure
 geo_inter$individual.sig$TN[["AAA.T_or_NoT"]] <- NA # main analysis
-geo_inter$individual.sig$TN[["T.AAA_or_A0A"]] <- NA # supplemenatry analysis
-geo_inter$individual.sig$TN[["Global"]] <- NA # supplemenatry analysis
+# geo_inter$individual.sig$TN[["T.AAA_or_A0A"]] <- NA # supplementary analysis
+# geo_inter$individual.sig$TN[["Global"]] <- NA # supplementary analysis
 
 
 
 # Interaction summary
 geo_inter$individual.sig$TN <- purrr::map(
 
-  #   Subtype       Arm   N
-  # 1      TN     AAA+T 293
-  # 2      TN     A0A+T 150
-  # 3      TN       AAA  83
 
-
-  c("AAA.T_or_NoT", # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
-    "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
-    "Global"), # 3. Per subtype global interaction: all-Arm * Sig * pCR
+  c("AAA.T_or_NoT" #, # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
+    # "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+    # "Global" # 3. Per subtype global interaction: all-Arm * Sig * pCR
+    ),
 
   function(analysis, clin){
 
@@ -478,9 +425,11 @@ geo_inter$individual.sig$TN <- purrr::map(
   clin = clin_neoadj_finneo
 )
 
-names(geo_inter$individual.sig$TN) <- c("AAA.T_or_NoT", # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
-                                        "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
-                                        "Global") # 3. Per subtype global interaction: all-Arm * Sig * pCR
+names(geo_inter$individual.sig$TN) <- c(
+  "AAA.T_or_NoT" #, # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
+  # "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+  # "Global" # 3. Per subtype global interaction: all-Arm * Sig * pCR
+)
 
 
 
@@ -488,14 +437,14 @@ names(geo_inter$individual.sig$TN) <- c("AAA.T_or_NoT", # 1. Per subtype taxane 
 # @@@@@@@@@@@@@@@@@@@@@@@
 
 # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
-# 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
-# 3. Per subtype global interaction: all-Arm * Sig * pCR
+# 2. Irrelevant - Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+# 3. Irrelevant - Per subtype global interaction: all-Arm * Sig * pCR
 
 # Naming convention:
-# Name analysis based on backbone(non-interacting) therapy and interaction tested therpies.
-# "." seperates back bone therpy from interaction tested therpaies/subtypes.
+# Name analysis based on backbone(non-interacting) therapy and interaction tested therapies.
+# "." separates back bone therapy from interaction tested therapies/subtypes.
 # The part left to the "." represents backbone therapy and
-#   the part to the right represents interacion tested therapies or subtypes.
+#   the part to the right represents interaction tested therapies or subtypes.
 
 # Recommanded R naming convention:
 # Name should only contains letters, numbers underscre and dot.
@@ -504,23 +453,20 @@ names(geo_inter$individual.sig$TN) <- c("AAA.T_or_NoT", # 1. Per subtype taxane 
 
 # Analysis structure
 geo_inter$pooled.sig$TN[["AAA.T_or_NoT"]] <- NA # main analysis
-geo_inter$pooled.sig$TN[["T.AAA_or_A0A"]] <- NA # supplemenatry analysis
-geo_inter$pooled.sig$TN[["Global"]] <- NA # supplemenatry analysis
+# geo_inter$pooled.sig$TN[["T.AAA_or_A0A"]] <- NA # supplemenatry analysis
+# geo_inter$pooled.sig$TN[["Global"]] <- NA # supplemenatry analysis
 
 
 
 # Interaction summary
 geo_inter$pooled.sig$TN <- purrr::map(
 
-  #   Subtype       Arm   N
-  # 1      TN     AAA+T 293
-  # 2      TN     A0A+T 150
-  # 3      TN       AAA  83
 
-
-  c("AAA.T_or_NoT", # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
-    "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
-    "Global"), # 3. Per subtype global interaction: all-Arm * Sig * pCR
+  c(
+    "AAA.T_or_NoT" #, # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
+    # "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+    # "Global"# 3. Per subtype global interaction: all-Arm * Sig * pCR
+    ),
 
   function(analysis, clin){
 
@@ -710,9 +656,11 @@ geo_inter$pooled.sig$TN <- purrr::map(
   clin = clin_neoadj_finneo
 )
 
-names(geo_inter$pooled.sig$TN) <- c("AAA.T_or_NoT", # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
-                                    "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
-                                    "Global") # 3. Per subtype global interaction: all-Arm * Sig * pCR
+names(geo_inter$pooled.sig$TN) <- c(
+  "AAA.T_or_NoT" #, # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
+  # "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+  # "Global" # 3. Per subtype global interaction: all-Arm * Sig * pCR
+)
 
 
 
@@ -725,28 +673,24 @@ names(geo_inter$pooled.sig$TN) <- c("AAA.T_or_NoT", # 1. Per subtype taxane inte
 
 
 # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
-# 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
-# 3. Per subtype global interaction: all-Arm * Sig * pCR
+# 2. Irrelevant - Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+# 3. Irrelevant - Per subtype global interaction: all-Arm * Sig * pCR
 
 
 # Analysis structure
 geo_inter$individual.sig$HR[["AAA.T_or_NoT"]] <- NA # main analysis
-geo_inter$individual.sig$HR[["T.AAA_or_A0A"]] <- NA # supplemenatry analysis
-geo_inter$individual.sig$HR[["Global"]] <- NA # supplemenatry analysis
+# geo_inter$individual.sig$HR[["T.AAA_or_A0A"]] <- NA # supplementary analysis
+# geo_inter$individual.sig$HR[["Global"]] <- NA # supplementary analysis
 
 
 # Interaction summary
 geo_inter$individual.sig$HR <- purrr::map(
 
-  #   Subtype       Arm   N
-  # 6      HR     AAA+T 521
-  # 7      HR     A0A+T 139
-  # 8      HR       AAA  91
-
-
-  c("AAA.T_or_NoT", # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
-    "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
-    "Global"), # 3. Per subtype global interaction: all-Arm * Sig * pCR
+  c(
+    "AAA.T_or_NoT" #, # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
+    # "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+    # "Global" # 3. Per subtype global interaction: all-Arm * Sig * pCR
+    ),
 
   function(analysis, clin){
 
@@ -934,9 +878,11 @@ geo_inter$individual.sig$HR <- purrr::map(
   clin = clin_neoadj_finneo
 )
 
-names(geo_inter$individual.sig$HR) <- c("AAA.T_or_NoT", # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
-                                        "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
-                                        "Global") # 3. Per subtype global interaction: all-Arm * Sig * pCR
+names(geo_inter$individual.sig$HR) <- c(
+  "AAA.T_or_NoT" #, # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
+  # "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+  # "Global" # 3. Per subtype global interaction: all-Arm * Sig * pCR
+)
 
 
 
@@ -946,28 +892,24 @@ names(geo_inter$individual.sig$HR) <- c("AAA.T_or_NoT", # 1. Per subtype taxane 
 
 
 # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
-# 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
-# 3. Per subtype global interaction: all-Arm * Sig * pCR
+# 2. Irrelevant -  Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+# 3. Irrelevant - Per subtype global interaction: all-Arm * Sig * pCR
 
 
 # Analysis structure
 geo_inter$pooled.sig$HR[["AAA.T_or_NoT"]] <- NA # main analysis
-geo_inter$pooled.sig$HR[["T.AAA_or_A0A"]] <- NA # supplemenatry analysis
-geo_inter$pooled.sig$HR[["Global"]] <- NA # supplemenatry analysis
+# geo_inter$pooled.sig$HR[["T.AAA_or_A0A"]] <- NA # supplementary analysis
+# geo_inter$pooled.sig$HR[["Global"]] <- NA # supplementary analysis
 
 
 # Interaction summary
 geo_inter$pooled.sig$HR <- purrr::map(
 
-  #   Subtype       Arm   N
-  # 6      HR     AAA+T 521
-  # 7      HR     A0A+T 139
-  # 8      HR       AAA  91
-
-
-  c("AAA.T_or_NoT", # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
-    "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
-    "Global"), # 3. Per subtype global interaction: all-Arm * Sig * pCR
+  c(
+    "AAA.T_or_NoT" # , # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
+    # "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+    # "Global"# 3. Per subtype global interaction: all-Arm * Sig * pCR
+    ),
 
   function(analysis, clin){
 
@@ -1146,9 +1088,11 @@ geo_inter$pooled.sig$HR <- purrr::map(
   clin = clin_neoadj_finneo
 )
 
-names(geo_inter$pooled.sig$HR) <- c("AAA.T_or_NoT", # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
-                                    "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
-                                    "Global") # 3. Per subtype global interaction: all-Arm * Sig * pCR
+names(geo_inter$pooled.sig$HR) <- c(
+  "AAA.T_or_NoT" #, # 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
+  # "T.AAA_or_A0A", # 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
+  # "Global" # 3. Per subtype global interaction: all-Arm * Sig * pCR
+  )
 
 
 #
@@ -1157,93 +1101,88 @@ names(geo_inter$pooled.sig$HR) <- c("AAA.T_or_NoT", # 1. Per subtype taxane inte
 
 
 
-# 4. Analysis summary tables
-# ==============================================================================
-
-# geo_inter
-
-summarize_geo_inter <- function(x){
-
-  # x <- geo_inter$TN$AAA.T_or_NoT
-
-
-
-
-  x <- purrr::map(x,
-                  function(xx, prog){
-
-                    xx <- xx %>%
-                      dplyr::filter(is.na(P_prog_adj))
-
-
-                      nme <- c("Module_name", "Interaction_var_levels", "N_response", "N_patients", "Percent_repsonse",
-                               "Estimate", "l95", "u95", "P", "P_inter_adj", "Q", "Q_p", "I2")
-                      xx <- xx[ , nme] %>%
-                        dplyr::mutate(
-                          Percent_repsonse = round(Percent_repsonse, digits = 1) %>% str_c("%"),
-                          Log_OR = str_c(round(Estimate, digits = 1),
-                                         " (",
-                                         round(l95,digits=1), "-",
-                                         round(u95,digits=1),
-                                         ")"),
-                          P = round(P, digits = 3),
-                          P_inter_adj = round(P_inter_adj, digits = 3),
-                          Q = round(Q, digits = 3),
-                          Q_p = round(Q_p, digits = 3),
-                          I2 = round(I2, digits = 3)
-                          )
-
-                      xx %>%
-                        dplyr::select(c("Module_name", "Interaction_var_levels",
-                                        "N_response", "N_patients", "Percent_repsonse",
-                                        "Log_OR", "P", "P_inter_adj", "Q", "Q_p", "I2"))
-
-
-                    })
-
-  return(x)
-
-}
-
-xout <- list()
-
-xout[["TN_individual.sig"]] <- summarize_geo_inter(x = geo_inter$individual.sig$TN)$AAA.T_or_NoT
-xout[["TN_pooled.sig"]] <- summarize_geo_inter(x = geo_inter$pooled.sig$TN)$AAA.T_or_NoT
-xout[["HR_individual.sig"]] <- summarize_geo_inter(x = geo_inter$individual.sig$HR)$AAA.T_or_NoT
-xout[["HR_pooled.sig"]] <- summarize_geo_inter(x = geo_inter$pooled.sig$HR)$AAA.T_or_NoT
-
-write_xlsx(xout, path = str_c(out_tables,"geo_taxane_interaction_summary_v2.1.xlsx"))
-
-
-
-xout <- list()
-
-xout[["TN_individual.sig"]] <- summarize_geo_inter(x = geo_inter$individual.sig$TN)$T.AAA_or_A0A
-xout[["TN_pooled.sig"]] <- summarize_geo_inter(x = geo_inter$pooled.sig$TN)$T.AAA_or_A0A
-xout[["HR_individual.sig"]] <- summarize_geo_inter(x = geo_inter$individual.sig$HR)$T.AAA_or_A0A
-xout[["HR_pooled.sig"]] <- summarize_geo_inter(x = geo_inter$pooled.sig$HR)$T.AAA_or_A0A
-
-write_xlsx(xout, path = str_c(out_tables,"geo_antimetabolite_interaction_summary_v2.1.xlsx"))
-
-
-
+# # 4. Analysis summary tables
+# # ==============================================================================
 #
-# ==============================================================================
+# # geo_inter
+#
+# summarize_geo_inter <- function(x){
+#
+#   # x <- geo_inter$TN$AAA.T_or_NoT
+#
+#
+#
+#
+#   x <- purrr::map(x,
+#                   function(xx, prog){
+#
+#                     xx <- xx %>%
+#                       dplyr::filter(is.na(P_prog_adj))
+#
+#
+#                       nme <- c("Module_name", "Interaction_var_levels", "N_response", "N_patients", "Percent_repsonse",
+#                                "Estimate", "l95", "u95", "P", "P_inter_adj", "Q", "Q_p", "I2")
+#                       xx <- xx[ , nme] %>%
+#                         dplyr::mutate(
+#                           Percent_repsonse = round(Percent_repsonse, digits = 1) %>% str_c("%"),
+#                           Log_OR = str_c(round(Estimate, digits = 1),
+#                                          " (",
+#                                          round(l95,digits=1), "-",
+#                                          round(u95,digits=1),
+#                                          ")"),
+#                           P = round(P, digits = 3),
+#                           P_inter_adj = round(P_inter_adj, digits = 3),
+#                           Q = round(Q, digits = 3),
+#                           Q_p = round(Q_p, digits = 3),
+#                           I2 = round(I2, digits = 3)
+#                           )
+#
+#                       xx %>%
+#                         dplyr::select(c("Module_name", "Interaction_var_levels",
+#                                         "N_response", "N_patients", "Percent_repsonse",
+#                                         "Log_OR", "P", "P_inter_adj", "Q", "Q_p", "I2"))
+#
+#
+#                     })
+#
+#   return(x)
+#
+# }
+#
+# xout <- list()
+#
+# xout[["TN_individual.sig"]] <- summarize_geo_inter(x = geo_inter$individual.sig$TN)$AAA.T_or_NoT
+# xout[["TN_pooled.sig"]] <- summarize_geo_inter(x = geo_inter$pooled.sig$TN)$AAA.T_or_NoT
+# xout[["HR_individual.sig"]] <- summarize_geo_inter(x = geo_inter$individual.sig$HR)$AAA.T_or_NoT
+# xout[["HR_pooled.sig"]] <- summarize_geo_inter(x = geo_inter$pooled.sig$HR)$AAA.T_or_NoT
+#
+# write_xlsx(xout, path = str_c(out_tables,"geo_taxane_interaction_summary_v2.1.xlsx"))
+#
+#
+# #
+# # ==============================================================================
 
 
 
-# 5. Save Robjects odf interaction summaries
+# 5. Save Robjects of interaction summaries
 # ==============================================================================
 
 
 # geo_inter : Interaction summary
-save(geo_inter, file = str_c(out_data,"geo_inter_v2.1.RData")) # old name: inter_sum
+geo_inter_finneo <- geo_inter
+save(geo_inter_finneo, file = str_c(out_data,"geo_inter_finneo.RData")) # old name: inter_sum
 
 
 #
 # ==============================================================================
 
 
+# Clear memory
+# ==============================================================================
 
+rm(clin_neoadj_finneo, geo_inter_finneo, geo_inter)
+
+#
+# ==============================================================================
 
 

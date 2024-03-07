@@ -1,38 +1,38 @@
-# s3_exploring_prognosis.R
+# s10.1_geo_exploring_prognosis_finneo.R
 
 
 # What the script does?
 # >>>>>>>>>>>>>>>>>>>>>
 # Explore the prognostic value of TIL associated signatures and Immune celltypes.
-# Account for study heterogenity.
+# Account for study heterogeneity.
 # Prepare data necessary to plot prognostic plots.
 
 
 
-# Script strucutre
+# Script structure
 # >>>>>>>>>>>>>>>>
-# 1. Load and summarize clin_neoadj_neo.
+# 1. Load and summarize clin_neoadj_finneo.
 # 2. Explore prognosis.
-# 3. Explore prognosis heterogenity.
+# 3. Explore prognosis heterogeneity.
 # 4. Analysis summary
 # 5. Save Robjects
 
 
 
-# 1. Load and format clin_neoadj_neo.
+# 1. Load and format clin_neoadj_finneo.
 # ==============================================================================
 
-load("results/data/clin_neoadj_neo.RData")
+load("results/data/clin_neoadj_finneo.RData")
 
 
 
 
-# Summarize clin_neoadj_neo
+# Summarize clin_neoadj_finneo
 # >>>>>>>>>>>>>>>>>>>>>
 
 
 # All neoadj regimen
-clin_neoadj_neo %>%
+clin_neoadj_finneo %>%
   dplyr::group_by(
     Subtype = Subtype_ihc,
     Hr,
@@ -58,26 +58,27 @@ clin_neoadj_neo %>%
 
 
 # Analysis
-# 1. Per subtype prognosis (hr-arm-study heterogenity)
-# 2. Pan-subtype prognosis (subtype-hr-arm-study heterogenity)
-
-# Analysis note 1:
-# For the main analysis consider HER2 as a whole (i.e. both HR- and HR+ HER2) with
-# stratification based on hr-arm-study.
-# Further as a supplementary analysis, repeat the same analysis (as in HER2 whole)
-# in each HR-HER2+ and HR+HER2+ independetly.
+# 1. Per subtype prognosis (hr-arm-study heterogeneity)
+# 2. Focus the analysis on AAA containing regimens due to large sample size.
+# 2. Discard AOA regimen
+# 3. Discard HER2 subtype (no AAA+/-T interaction analysis is performed in this subtype)
+# 4. Script structure:
+#     Create geo_inter (interaction summary) list object.
+#     Each element represent all analysis done on each subtype.
+#
 
 # Analysis note 2:
 # By definition, prognosis is the natural course of disease independent of
 # treatment regimen. Hence limiting analysis to specific treatment regimen is
 # meaning less. Further, it is wrong to interpret interaction from prognostic model
 # even if prognostic effect is limited to a single treatment regimen and not to others.
-# An interaction test is the minimum requirement to clim a significant treatment
+# An interaction test is the minimum requirement to claim a significant treatment
 # interaction.
 
 
 # All neoadj regimen with Strata info
-clin_neoadj_neo %>%
+clin_neoadj_finneo %>%
+  dplyr::filter(Subtype_ihc != "HER2") %>%
   dplyr::group_by(
     Subtype = Subtype_ihc,
     Hr,
@@ -89,41 +90,28 @@ clin_neoadj_neo %>%
   as.data.frame()
 
 #    Subtype  Hr                                                                  Arm                 Strata   N Event Event_percet
-# 1     HER2 neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     GSE20194:AAA+T:HR-  25    13    52.000000
-# 2     HER2 neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     GSE32646:AAA+T:HR-  18     9    50.000000
-# 3     HER2 neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     GSE50948:AAA+T:HR-  37     9    24.324324
-# 4     HER2 neg     AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_therapy GSE42822:AAA+T+TRA:HR-  15    10    66.666667
-# 5     HER2 neg     AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_therapy GSE50948:AAA+T+TRA:HR-  43    25    58.139535
+# 1      HR pos   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE25066:A0A+T  35     3     8.571429
+# 2      HR pos   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE41998:A0A+T 104    12    11.538462
+# 3      HR pos AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy           GSE20271:AAA  49     3     6.122449
+# 4      HR pos AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy           GSE22093:AAA  42    10    23.809524
+# 5      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE20194:AAA+T 141     9     6.382979
+# 6      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE20271:AAA+T  44     3     6.818182
+# 7      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE23988:AAA+T  32     7    21.875000
+# 8      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE25066:AAA+T 194    22    11.340206
+# 9      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE32646:AAA+T  55     5     9.090909
+# 10      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE42822:AAA+T  29     8    27.586207
+# 11      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE50948:AAA+T  26     4    15.384615
 
-# 6     HER2 pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     GSE20194:AAA+T:HR+  25     4    16.000000
-# 7     HER2 pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     GSE32646:AAA+T:HR+  16     3    18.750000
-# 8     HER2 pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     GSE50948:AAA+T:HR+  14     4    28.571429
-# 9     HER2 pos     AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_therapy GSE42822:AAA+T+TRA:HR+   9     2    22.222222
-# Note that the above strata with 9 samples create convergense issue !!!!
-# 10    HER2 pos     AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_therapy GSE50948:AAA+T+TRA:HR+  20     6    30.000000
-
-# 11      HR pos   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE25066:A0A+T  35     3     8.571429
-# 12      HR pos   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE41998:A0A+T 104    12    11.538462
-# 13      HR pos AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy           GSE20271:AAA  49     3     6.122449
-# 14      HR pos AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy           GSE22093:AAA  42    10    23.809524
-# 15      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE20194:AAA+T 141     9     6.382979
-# 16      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE20271:AAA+T  44     3     6.818182
-# 17      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE23988:AAA+T  32     7    21.875000
-# 18      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE25066:AAA+T 194    22    11.340206
-# 19      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE32646:AAA+T  55     5     9.090909
-# 20      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE42822:AAA+T  29     8    27.586207
-# 21      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE50948:AAA+T  26     4    15.384615
-
-# 22      TN neg   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE25066:A0A+T  25     6    24.000000
-# 23      TN neg   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE41998:A0A+T 125    51    40.800000
-# 24      TN neg AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy           GSE20271:AAA  28     4    14.285714
-# 25      TN neg AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy           GSE22093:AAA  55    18    32.727273
-# 26      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE20194:AAA+T  64    25    39.062500
-# 27      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE20271:AAA+T  31     9    29.032258
-# 28      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE23988:AAA+T  29    13    44.827586
-# 29      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE25066:AAA+T 119    43    36.134454
-# 30      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE32646:AAA+T  26    10    38.461538
-# 31      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE42822:AAA+T  24    12    50.000000
+# 12      TN neg   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE25066:A0A+T  25     6    24.000000
+# 13      TN neg   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE41998:A0A+T 125    51    40.800000
+# 14      TN neg AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy           GSE20271:AAA  28     4    14.285714
+# 15      TN neg AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy           GSE22093:AAA  55    18    32.727273
+# 16      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE20194:AAA+T  64    25    39.062500
+# 17      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE20271:AAA+T  31     9    29.032258
+# 18      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE23988:AAA+T  29    13    44.827586
+# 19      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE25066:AAA+T 119    43    36.134454
+# 20      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE32646:AAA+T  26    10    38.461538
+# 21      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE42822:AAA+T  24    12    50.000000
 
 # Note !!!!!
 # The event rate in HR subtype is low possibily due to lack of hormone therapy
@@ -139,7 +127,7 @@ clin_neoadj_neo %>%
 # 2. Explore prognosis.
 # ==============================================================================
 
-# Per subtype prognosis (Sereis matrix + Arm (~ Strata) heterogenity)
+# Per subtype prognosis (Series matrix + Arm (~ Strata) heterogeneity)
 
 
 # Reference
@@ -159,40 +147,40 @@ clin_neoadj_neo %>%
 # Analysis/plot structure
 # >>>>>>>>>>>>>>>>>>>>>>>
 
-# Basic prognosis plot strucutre ( per subtype - per sig - per arm - study heterogenity)
+# Basic prognosis plot structure ( per subtype - per sig - per arm - study heterogeneity)
 # (!!! Note : This plot will be generated in the NEXT SECTION of the script)
 #
-# TN - sig1 - arm1 - prognosis - study heterogenity
-# TN - sig1 - arm2 - prognosis - study heterogenity
-# TN - sig1 - arm3 - prognosis - study heterogenity
-# TN - sig1 - arm4 - prognosis - study heterogenity
+# TN - sig1 - arm1 - prognosis - study heterogeneity
+# TN - sig1 - arm2 - prognosis - study heterogeneity
+# TN - sig1 - arm3 - prognosis - study heterogeneity
+# TN - sig1 - arm4 - prognosis - study heterogeneity
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# TN - sig1 - armX - prognosis - study and arm heterogenity (global)
+# TN - sig1 - armX - prognosis - study and arm heterogeneity (global)
 # Note:
 # In prognosis forest plot include the global prognosis (pooled arm) for sig1 per subtype.
-# The global analysis account for study and arm heterogenity,
-# and it also asseses the heterogenity level.
+# The global analysis account for study and arm heterogeneity,
+# and it also assess the heterogeneity level.
 
 
-# Higher level prognosis plot strucutre
+# Higher level prognosis plot structure
 # TN/HER2/HR/ALL (event summary for each subtype, event/size: e/n)
 # (!!! Note : This plot will be generated in the THIS SECTION of the script)
 #
-# immune sig1 - armX - prognosis - study and arm heterogenity (global)
-# immune sig2 - armX - prognosis - study and arm heterogenity (global)
-# immune sig3 - armX - prognosis - study and arm heterogenity (global)
-# interferon sig1 - armX - prognosis - study and arm heterogenity (global)
-# interferon sig2 - armX - prognosis - study and arm heterogenity (global)
-# interferon sig3 - armX - prognosis - study and arm heterogenity (global)
-# fibrosis sig1 - armX - prognosis - study and arm heterogenity (global)
-# fibrosis sig2 - armX - prognosis - study and arm heterogenity (global)
-# fibrosis sig3 - armX - prognosis - study and arm heterogenity (global)
-# cholesterol sig1 - armX - prognosis - study and arm heterogenity (global)
-# cholesterol sig2 - armX - prognosis - study and arm heterogenity (global)
-# cholesterol sig3 - armX - prognosis - study and arm heterogenity (global)
-# proliferation sig1 - armX - prognosis - study and arm heterogenity (global)
-# proliferation sig2 - armX - prognosis - study and arm heterogenity (global)
-# proliferation sig3 - armX - prognosis - study and arm heterogenity (global)
+# immune sig1 - armX - prognosis - study and arm heterogeneity (global)
+# immune sig2 - armX - prognosis - study and arm heterogeneity (global)
+# immune sig3 - armX - prognosis - study and arm heterogeneity (global)
+# interferon sig1 - armX - prognosis - study and arm heterogeneity (global)
+# interferon sig2 - armX - prognosis - study and arm heterogeneity (global)
+# interferon sig3 - armX - prognosis - study and arm heterogeneity (global)
+# fibrosis sig1 - armX - prognosis - study and arm heterogeneity (global)
+# fibrosis sig2 - armX - prognosis - study and arm heterogeneity (global)
+# fibrosis sig3 - armX - prognosis - study and arm heterogeneity (global)
+# cholesterol sig1 - armX - prognosis - study and arm heterogeneity (global)
+# cholesterol sig2 - armX - prognosis - study and arm heterogeneity (global)
+# cholesterol sig3 - armX - prognosis - study and arm heterogeneity (global)
+# proliferation sig1 - armX - prognosis - study and arm heterogeneity (global)
+# proliferation sig2 - armX - prognosis - study and arm heterogeneity (global)
+# proliferation sig3 - armX - prognosis - study and arm heterogeneity (global)
 
 
 geo_prog <- vector(mode = "list", length = 2)
@@ -209,7 +197,7 @@ geo_prog <- purrr::map(
 
 
 
-# Get prognostic effect and heterogenity measurement
+# Get prognostic effect and heterogeneity measurement
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 
@@ -226,28 +214,25 @@ geo_prog$individual.sig <- purrr::map(
     xclin <- switch (
       subtype,
 
-      ALL = clin,
-
-      HER2 = clin %>%
-        dplyr::filter(Subtype_ihc == subtype),
-
-      "HR+HER2+" = clin %>%
-        dplyr::filter(Subtype_ihc2 == subtype & Strata != "GSE42822:AAA+T+TRA"),
-      # The above strata has only 9 samples with 2 events
-      # If included in analysis, the above strata will throw the following warnings.
-      # Warning messages:
-      # 1: glm.fit: algorithm did not converge
-      # 2: glm.fit: fitted probabilities numerically 0 or 1 occurred
+      # ALL = clin,
+      #
+      # HER2 = clin %>%
+      #   dplyr::filter(Subtype_ihc == subtype),
+      #
+      # "HR+HER2+" = clin %>%
+      #   dplyr::filter(Subtype_ihc2 == subtype & Strata != "GSE42822:AAA+T+TRA"),
+      # # The above strata has only 9 samples with 2 events
+      # # If included in analysis, the above strata will throw the following warnings.
+      # # Warning messages:
+      # # 1: glm.fit: algorithm did not converge
+      # # 2: glm.fit: fitted probabilities numerically 0 or 1 occurred
 
       clin %>%
         dplyr::filter(Subtype_ihc2 == subtype)
     )
 
-    # sig = "Immune1"
-    # subtype = "TN"
-    # clin <- clin_neoadj_neo
 
-    # Per sig prognosis + heterogenity
+    # Per sig prognosis + heterogeneity
     xx <- purrr::map(
 
 
@@ -256,32 +241,20 @@ geo_prog$individual.sig <- purrr::map(
         "scaled_Denovo_Immune",
         "scaled_Denovo_ECM",
 
-        "scaled_Gruosso2019_Immune",
         "scaled_Hamy2016_Immune",
-        "scaled_Teschendorff2007_Immune",
         "scaled_Yang2018_Immune",
-        "scaled_Desmedt2008_STAT1",
 
         "scaled_Gruosso2019_Interferon",
         "scaled_Farmer2009_MX1",
         "scaled_Hamy2016_Interferon",
         "scaled_Nirmal2018_Interferon",
 
-        "scaled_Gruosso2019_Cholesterol",
-        "scaled_Ehmsen2019_Chol",
-        "scaled_Simigdala2016_Chol",
-        "scaled_Sorrentino2014_Chol",
-
-        "scaled_Gruosso2019_Fibrosis",
         "scaled_Hamy2016_Ecm",
         "scaled_Naba2014_Ecmcore",
         "scaled_Triulzi2013_Ecm",
 
-        "MCPcounter_Tcell",
-        "MCPcounter_B.Lineage",
-        "MCPcounter_Monocytic.Lineage",
-        "MCPcounter_Myeloid.Dendritic",
-        "MCPcounter_Endothelial",
+        "scaled_Sorrentino2014_Chol",
+
         "MCPcounter_Fibroblasts"
         ),
 
@@ -319,13 +292,13 @@ geo_prog$individual.sig <- purrr::map(
           as_tibble(rownames = "Module_name")
 
 
-        # Estimate heterogenity
-        # Note that heterogenity assessed w.r.t each strata
-        # For each strata, the prognostic value is assessed and the heterogenity is measured
+        # Estimate heterogeneity
+        # Note that heterogeneity assessed w.r.t each strata
+        # For each strata, the prognostic value is assessed and the heterogeneity is measured
         m1_het_clean <- estimate_prog_heterogenity(xclin = xclin, sig = sig)
 
 
-        # Prognosis + Heterogenity
+        # Prognosis + heterogeneity
         m1_prog_clean %>%
           left_join(m1_het_clean, by = "Module_name")
 
@@ -350,7 +323,7 @@ geo_prog$individual.sig <- purrr::map(
 
   },
 
-  clin = clin_neoadj_neo
+  clin = clin_neoadj_finneo
 )
 
 names(geo_prog$individual.sig) <- c("TN", "HR")
@@ -371,28 +344,25 @@ geo_prog$pooled.sig <- purrr::map(
     xclin <- switch (
       subtype,
 
-      ALL = clin,
-
-      HER2 = clin %>%
-        dplyr::filter(Subtype_ihc == subtype),
-
-      "HR+HER2+" = clin %>%
-        dplyr::filter(Subtype_ihc2 == subtype & Strata != "GSE42822:AAA+T+TRA"),
-      # The above strata has only 9 samples with 2 events
-      # If included in analysis, the above strata will throw the following warnings.
-      # Warning messages:
-      # 1: glm.fit: algorithm did not converge
-      # 2: glm.fit: fitted probabilities numerically 0 or 1 occurred
+      # ALL = clin,
+      #
+      # HER2 = clin %>%
+      #   dplyr::filter(Subtype_ihc == subtype),
+      #
+      # "HR+HER2+" = clin %>%
+      #   dplyr::filter(Subtype_ihc2 == subtype & Strata != "GSE42822:AAA+T+TRA"),
+      # # The above strata has only 9 samples with 2 events
+      # # If included in analysis, the above strata will throw the following warnings.
+      # # Warning messages:
+      # # 1: glm.fit: algorithm did not converge
+      # # 2: glm.fit: fitted probabilities numerically 0 or 1 occurred
 
       clin %>%
         dplyr::filter(Subtype_ihc2 == subtype)
     )
 
-    # sig = "Immune1"
-    # subtype = "TN"
-    # clin <- clin_neoadj_neo
 
-    # Per sig prognosis + heterogenity
+    # Per sig prognosis + heterogeneity
     xx <- purrr::map(
 
 
@@ -406,11 +376,6 @@ geo_prog$pooled.sig <- purrr::map(
         "scaled_Pooled_Fibrosis",
         "scaled_Pooled_Cholesterol",
 
-        "MCPcounter_Tcell",
-        "MCPcounter_B.Lineage",
-        "MCPcounter_Monocytic.Lineage",
-        "MCPcounter_Myeloid.Dendritic",
-        "MCPcounter_Endothelial",
         "MCPcounter_Fibroblasts"
       ),
 
@@ -448,13 +413,13 @@ geo_prog$pooled.sig <- purrr::map(
           as_tibble(rownames = "Module_name")
 
 
-        # Estimate heterogenity
-        # Note that heterogenity assessed w.r.t each strata
-        # For each strata, the prognostic value is assessed and the heterogenity is measured
+        # Estimate heterogeneity
+        # Note that heterogeneity assessed w.r.t each strata
+        # For each strata, the prognostic value is assessed and the heterogeneity is measured
         m1_het_clean <- estimate_prog_heterogenity(xclin = xclin, sig = sig)
 
 
-        # Prognosis + Heterogenity
+        # Prognosis + heterogeneity
         m1_prog_clean %>%
           left_join(m1_het_clean, by = "Module_name")
 
@@ -479,7 +444,7 @@ geo_prog$pooled.sig <- purrr::map(
 
   },
 
-  clin = clin_neoadj_neo
+  clin = clin_neoadj_finneo
 )
 
 names(geo_prog$pooled.sig) <- c("TN", "HR")
@@ -494,8 +459,9 @@ names(geo_prog$pooled.sig) <- c("TN", "HR")
 
 
 
-# 3. Explore prognosis heterogenity.
+# 3. Explore prognosis heterogeneity.
 # ==============================================================================
+
 
 
 geo_prog_het <- vector(mode = "list", length = 2)
@@ -513,11 +479,11 @@ geo_prog_het <- purrr::map(
 
 
 
-# Explore per arm prognostic effect and study heterogenity
+# Explore per arm prognostic effect and study heterogeneity
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 
-# Per-subtype, per-sig strata (study-arm) heterogenity assesment
+# Per-subtype, per-sig strata (study-arm) heterogeneity assessment
 
 
 # Individual sig >>>>>>>>>>>
@@ -552,9 +518,9 @@ geo_prog_het$individual.sig <- purrr::map(
 
     # sig = "Immune1"
     # subtype = "TN"
-    # clin <- clin_neoadj_neo
+    # clin <- clin_neoadj_finneo
 
-    # Per-subtype, per-sig heterogenity assesment
+    # Per-subtype, per-sig heterogeneity assesment
     xx <- purrr::map(
 
       c(
@@ -562,32 +528,20 @@ geo_prog_het$individual.sig <- purrr::map(
         "scaled_Denovo_Immune",
         "scaled_Denovo_ECM",
 
-        "scaled_Gruosso2019_Immune",
         "scaled_Hamy2016_Immune",
-        "scaled_Teschendorff2007_Immune",
         "scaled_Yang2018_Immune",
-        "scaled_Desmedt2008_STAT1",
 
         "scaled_Gruosso2019_Interferon",
         "scaled_Farmer2009_MX1",
         "scaled_Hamy2016_Interferon",
         "scaled_Nirmal2018_Interferon",
 
-        "scaled_Gruosso2019_Cholesterol",
-        "scaled_Ehmsen2019_Chol",
-        "scaled_Simigdala2016_Chol",
-        "scaled_Sorrentino2014_Chol",
-
-        "scaled_Gruosso2019_Fibrosis",
         "scaled_Hamy2016_Ecm",
         "scaled_Naba2014_Ecmcore",
         "scaled_Triulzi2013_Ecm",
 
-        "MCPcounter_Tcell",
-        "MCPcounter_B.Lineage",
-        "MCPcounter_Monocytic.Lineage",
-        "MCPcounter_Myeloid.Dendritic",
-        "MCPcounter_Endothelial",
+        "scaled_Sorrentino2014_Chol",
+
         "MCPcounter_Fibroblasts"
         ),
 
@@ -618,10 +572,10 @@ geo_prog_het$individual.sig <- purrr::map(
 
 
             # Pseudo code/analysis/data !!!
-            # Estimate heterogenity
+            # Estimate heterogeneity
             # Note that m1_het_clean has structure idenical to output from
             # estimate_prog_heterogenity(). This is to make make tibbles congruent
-            # when heterogenity stat is added for pooled data.
+            # when heterogeneity stat is added for pooled data.
             m1_het_clean <-
               tibble(
                 Module_name = sig,
@@ -643,7 +597,7 @@ geo_prog_het$individual.sig <- purrr::map(
               )
 
 
-            # Prognosis + Heterogenity
+            # Prognosis + heterogeneity
             m1_prog_clean %>%
               left_join(m1_het_clean, by = "Module_name")
 
@@ -677,7 +631,7 @@ geo_prog_het$individual.sig <- purrr::map(
           as_tibble(rownames = "Module_name") %>%
           dplyr::mutate(Strata = "All")
 
-        # Estimate heterogenity due to strata
+        # Estimate heterogeneity due to strata
         m1_het_clean <- estimate_prog_heterogenity(xclin = xclin, sig = sig) %>%
           # Sample size informaion is appended to use in plot
           dplyr::mutate(
@@ -689,7 +643,7 @@ geo_prog_het$individual.sig <- purrr::map(
               nrow()
           )
 
-        # Prognosis + Heterogenity of pooled strata appended to
+        # Prognosis + heterogeneity of pooled strata appended to
         # -individual strata level analysis summary
         xxx[["All"]] <-  m1_prog_clean %>%
           left_join(m1_het_clean, by = "Module_name")
@@ -720,39 +674,27 @@ geo_prog_het$individual.sig <- purrr::map(
       "scaled_Denovo_Immune",
       "scaled_Denovo_ECM",
 
-      "scaled_Gruosso2019_Immune",
       "scaled_Hamy2016_Immune",
-      "scaled_Teschendorff2007_Immune",
       "scaled_Yang2018_Immune",
-      "scaled_Desmedt2008_STAT1",
 
       "scaled_Gruosso2019_Interferon",
       "scaled_Farmer2009_MX1",
       "scaled_Hamy2016_Interferon",
       "scaled_Nirmal2018_Interferon",
 
-      "scaled_Gruosso2019_Cholesterol",
-      "scaled_Ehmsen2019_Chol",
-      "scaled_Simigdala2016_Chol",
-      "scaled_Sorrentino2014_Chol",
-
-      "scaled_Gruosso2019_Fibrosis",
       "scaled_Hamy2016_Ecm",
       "scaled_Naba2014_Ecmcore",
       "scaled_Triulzi2013_Ecm",
 
-      "MCPcounter_Tcell",
-      "MCPcounter_B.Lineage",
-      "MCPcounter_Monocytic.Lineage",
-      "MCPcounter_Myeloid.Dendritic",
-      "MCPcounter_Endothelial",
+      "scaled_Sorrentino2014_Chol",
+
       "MCPcounter_Fibroblasts"
       )
     xx
 
   },
 
-  clin = clin_neoadj_neo
+  clin = clin_neoadj_finneo
 )
 
 names(geo_prog_het$individual.sig) <- c("TN", "HR")
@@ -791,9 +733,9 @@ geo_prog_het$pooled.sig <- purrr::map(
 
     # sig = "Immune1"
     # subtype = "TN"
-    # clin <- clin_neoadj_neo
+    # clin <- clin_neoadj_finneo
 
-    # Per-subtype, per-sig heterogenity assesment
+    # Per-subtype, per-sig heterogeneity assesment
     xx <- purrr::map(
 
       c(
@@ -806,11 +748,6 @@ geo_prog_het$pooled.sig <- purrr::map(
         "scaled_Pooled_Fibrosis",
         "scaled_Pooled_Cholesterol",
 
-        "MCPcounter_Tcell",
-        "MCPcounter_B.Lineage",
-        "MCPcounter_Monocytic.Lineage",
-        "MCPcounter_Myeloid.Dendritic",
-        "MCPcounter_Endothelial",
         "MCPcounter_Fibroblasts"
       ),
 
@@ -841,10 +778,10 @@ geo_prog_het$pooled.sig <- purrr::map(
 
 
             # Pseudo code/analysis/data !!!
-            # Estimate heterogenity
+            # Estimate heterogeneity
             # Note that m1_het_clean has structure idenical to output from
             # estimate_prog_heterogenity(). This is to make make tibbles congruent
-            # when heterogenity stat is added for pooled data.
+            # when heterogeneity stat is added for pooled data.
             m1_het_clean <-
               tibble(
                 Module_name = sig,
@@ -866,7 +803,7 @@ geo_prog_het$pooled.sig <- purrr::map(
               )
 
 
-            # Prognosis + Heterogenity
+            # Prognosis + heterogeneity
             m1_prog_clean %>%
               left_join(m1_het_clean, by = "Module_name")
 
@@ -900,7 +837,7 @@ geo_prog_het$pooled.sig <- purrr::map(
           as_tibble(rownames = "Module_name") %>%
           dplyr::mutate(Strata = "All")
 
-        # Estimate heterogenity due to strata
+        # Estimate heterogeneity due to strata
         m1_het_clean <- estimate_prog_heterogenity(xclin = xclin, sig = sig) %>%
           # Sample size informaion is appended to use in plot
           dplyr::mutate(
@@ -912,7 +849,7 @@ geo_prog_het$pooled.sig <- purrr::map(
               nrow()
           )
 
-        # Prognosis + Heterogenity of pooled strata appended to
+        # Prognosis + heterogeneity of pooled strata appended to
         # -individual strata level analysis summary
         xxx[["All"]] <-  m1_prog_clean %>%
           left_join(m1_het_clean, by = "Module_name")
@@ -948,18 +885,13 @@ geo_prog_het$pooled.sig <- purrr::map(
       "scaled_Pooled_Fibrosis",
       "scaled_Pooled_Cholesterol",
 
-      "MCPcounter_Tcell",
-      "MCPcounter_B.Lineage",
-      "MCPcounter_Monocytic.Lineage",
-      "MCPcounter_Myeloid.Dendritic",
-      "MCPcounter_Endothelial",
       "MCPcounter_Fibroblasts"
     )
     xx
 
   },
 
-  clin = clin_neoadj_neo
+  clin = clin_neoadj_finneo
 )
 
 names(geo_prog_het$pooled.sig) <- c("TN", "HR")
@@ -974,55 +906,55 @@ names(geo_prog_het$pooled.sig) <- c("TN", "HR")
 
 
 
-# 4. Analysis summary tables
-# ==============================================================================
-
-# geo_inter
-
-summarize_geo_prog <- function(x){
-
-  # x <- geo_prog
-
-
-  x <- purrr::map(x,
-                  function(xx, prog){
-
-                    nme <- c("Module_name", "Estimate", "Lower_ci", "Upper_ci", "P", "P_adj", "Q", "Q_p", "I2")
-                    xx <- xx[ , nme] %>%
-                      dplyr::mutate(
-                        Log_OR = str_c(round(Estimate, digits = 1),
-                                       " (",
-                                       round(Lower_ci,digits=1), "-",
-                                       round(Upper_ci,digits=1),
-                                       ")"),
-                        P = round(P, digits = 3),
-                        P_adj = round(P_adj, digits = 3),
-                        Q = round(Q, digits = 3),
-                        Q_p = round(Q_p, digits = 3),
-                        I2 = round(I2, digits = 3)
-                      )
-
-                    xx %>%
-                      dplyr::select(c("Module_name",
-                                      "Log_OR", "P", "P_adj", "Q", "Q_p", "I2"))
-
-
-                  })
-
-  return(x)
-
-}
-
-xout <- summarize_geo_prog(x = geo_prog$individual.sig)
-write_xlsx(xout, path = str_c(out_tables,"geo_prognosis_individual.sig_summary_v2.2.xlsx"))
-
-xout <- summarize_geo_prog(x = geo_prog$pooled.sig)
-write_xlsx(xout, path = str_c(out_tables,"geo_prognosis_pooled.sig_summary_v2.2.xlsx"))
-
-
-
+# # 4. Analysis summary tables
+# # ==============================================================================
 #
-# ==============================================================================
+# # geo_inter
+#
+# summarize_geo_prog <- function(x){
+#
+#   # x <- geo_prog
+#
+#
+#   x <- purrr::map(x,
+#                   function(xx, prog){
+#
+#                     nme <- c("Module_name", "Estimate", "Lower_ci", "Upper_ci", "P", "P_adj", "Q", "Q_p", "I2")
+#                     xx <- xx[ , nme] %>%
+#                       dplyr::mutate(
+#                         Log_OR = str_c(round(Estimate, digits = 1),
+#                                        " (",
+#                                        round(Lower_ci,digits=1), "-",
+#                                        round(Upper_ci,digits=1),
+#                                        ")"),
+#                         P = round(P, digits = 3),
+#                         P_adj = round(P_adj, digits = 3),
+#                         Q = round(Q, digits = 3),
+#                         Q_p = round(Q_p, digits = 3),
+#                         I2 = round(I2, digits = 3)
+#                       )
+#
+#                     xx %>%
+#                       dplyr::select(c("Module_name",
+#                                       "Log_OR", "P", "P_adj", "Q", "Q_p", "I2"))
+#
+#
+#                   })
+#
+#   return(x)
+#
+# }
+#
+# xout <- summarize_geo_prog(x = geo_prog$individual.sig)
+# write_xlsx(xout, path = str_c(out_tables,"geo_prognosis_individual.sig_summary_v2.1.xlsx"))
+#
+# xout <- summarize_geo_prog(x = geo_prog$pooled.sig)
+# write_xlsx(xout, path = str_c(out_tables,"geo_prognosis_pooled.sig_summary_v2.1.xlsx"))
+#
+#
+#
+# #
+# # ==============================================================================
 
 
 
@@ -1032,13 +964,22 @@ write_xlsx(xout, path = str_c(out_tables,"geo_prognosis_pooled.sig_summary_v2.2.
 # ==============================================================================
 
 # geo_prog : Prognosis summary
-save(geo_prog, file = str_c(out_data,"geo_prog_v2.2.RData")) # old name: prog_sum
+geo_prog_finneo <- geo_prog
+save(geo_prog_finneo, file = str_c(out_data,"geo_prog_finneo.RData")) # old name: prog_sum
 
-# geo_prog_het: Prognosis heterogenity summary
-save(geo_prog_het, file = str_c(out_data,"geo_prog_het_v2.2.RData")) # old name: prog_sum_het
+# geo_prog_het: Prognosis heterogeneity summary
+geo_prog_het_finneo <- geo_prog_het
+save(geo_prog_het_finneo, file = str_c(out_data,"geo_prog_het_finneo.RData")) # old name: prog_sum_het
 
 #
 # ==============================================================================
 
 
 
+# Clear memory
+# ==============================================================================
+
+rm(clin_neoadj_finneo, geo_prog_finneo, geo_prog_het_finneo, geo_prog, geo_prog_het)
+
+#
+# ==============================================================================

@@ -1,9 +1,14 @@
-# geo plots
+# s11.1_geo plots_finneo.R
 
 
-load("results/data/geo_prog_v2.2.RData")
-load("results/data/geo_inter_v2.2.RData")
+load("results/data/geo_prog_finneo.RData")
+load("results/data/geo_inter_finneo.RData")
 
+load("results/data/clin_neoadj_finneo.RData")
+
+
+geo_prog <- geo_prog_finneo
+geo_inter <- geo_inter_finneo
 
 # Color scheme
 # >>>>>>>>>>>>
@@ -25,7 +30,8 @@ custom_colours <- c(
   # https://colorbrewer2.org/#type=qualitative&scheme=Set1&n=9
 
   "#e41a1c", # red for AAA+T (DTX)
-  "#377eb8", # blue for AAA (NVB)
+  # "#377eb8", # blue for AAA (NVB)
+  "#008B45FF", # green for AAA (NVB)
   "#a65628", # brown for AAA+T+TRA (TRA)
 
   "#008B45FF", # green for HR
@@ -133,6 +139,7 @@ geo_prog_merged <-
 
     # Formatting prognosis annotation
     Text_or = str_c(
+      # Estimate in Log scale; exp(Estimate) in original scale(ratio)
       exp(Estimate) %>% formatC(digits = 1, width = 1, format = "f"), # , flag = "  "
       "(",
       exp(Lower_ci) %>% formatC(digits = 1, width = 1, format = "f"), # , flag = "  "
@@ -185,34 +192,27 @@ geo_prog_merged <-
       str_detect(Module_name, "Pooled") ~ "Published-pooled",
       str_detect(Module_name, "MCPcounter") ~ "Cell",
 
-      Module_name == "Gruosso2019_Immune" ~ "Immune",
       Module_name == "Hamy2016_Immune" ~ "Immune",
-      Module_name == "Teschendorff2007_Immune" ~ "Immune",
       Module_name == "Yang2018_Immune" ~ "Immune",
-      Module_name == "Desmedt2008_STAT1" ~ "Immune",
 
       Module_name == "Gruosso2019_Interferon" ~ "Interferon",
       Module_name == "Farmer2009_MX1" ~ "Interferon",
       Module_name == "Hamy2016_Interferon" ~ "Interferon",
       Module_name == "Nirmal2018_Interferon" ~ "Interferon",
 
-      Module_name == "Gruosso2019_Fibrosis" ~ "Fibrosis",
+
       Module_name == "Hamy2016_Ecm" ~ "Fibrosis",
       Module_name == "Naba2014_Ecmcore" ~ "Fibrosis",
       Module_name == "Triulzi2013_Ecm" ~ "Fibrosis",
 
-      Module_name == "Gruosso2019_Cholesterol" ~ "Cholesterol", #"Cholesterol"
-      Module_name == "Ehmsen2019_Chol" ~ "Cholesterol",
-      Module_name == "Simigdala2016_Chol" ~ "Cholesterol",
-      Module_name == "Sorrentino2014_Chol" ~ "Cholesterol",
+      Module_name == "Sorrentino2014_Chol" ~ "Chol.", #"Cholesterol"
 
       TRUE ~ "Unknown"
-
     ) %>%
       factor(
         levels = c(
           "H&E", "De-novo",
-          "Immune", "Interferon", "Cholesterol", "Fibrosis",
+          "Immune", "Interferon", "Chol.", "Fibrosis",
           "Published-pooled", "Cell")
       ),
 
@@ -221,27 +221,19 @@ geo_prog_merged <-
       str_replace("Pooled","") %>%
       str_replace("MCPcounter","") %>%
 
-      str_replace("Gruosso2019_Immune","Gruosso2019") %>%
       str_replace("Hamy2016_Immune","Hamy2016") %>%
-      str_replace("Teschendorff2007_Immune","Teschendorff2007") %>%
       str_replace("Yang2018_Immune","Yang2018") %>%
-      str_replace("Desmedt2008_STAT1","Desmedt2008") %>%
 
       str_replace("Gruosso2019_Interferon","Gruosso2019") %>%
       str_replace("Farmer2009_MX1","Farmer2009") %>%
       str_replace("Hamy2016_Interferon","Hamy2016") %>%
       str_replace("Nirmal2018_Interferon","Nirmal2018") %>%
 
-      str_replace("Gruosso2019_Fibrosis","Gruosso2019") %>%
       str_replace("Hamy2016_Ecm","Hamy2016") %>%
       str_replace("Naba2014_Ecmcore","Naba2014") %>%
       str_replace("Triulzi2013_Ecm","Triulzi2013") %>%
 
-      str_replace("Gruosso2019_Cholesterol","Gruosso2019") %>%
-      str_replace("Ehmsen2019_Chol","Ehmsen2019") %>%
-      str_replace("Simigdala2016_Chol","Simigdala2016") %>%
       str_replace("Sorrentino2014_Chol","Sorrentino2014") %>%
-
 
       str_replace("Tcell","T.Cell") %>%
       str_replace("B.Lineage","B.Cell") %>%
@@ -249,7 +241,6 @@ geo_prog_merged <-
       str_replace("Myeloid.Dendritic","M.Dendritic") %>%
       # Endothelial
       str_replace("Fibroblasts","Fibroblast") %>%
-
 
       str_replace("_","") %>%
 
@@ -264,17 +255,16 @@ geo_prog_merged <-
         # denovo + pooled
         "TILsig", "Immune","ECM", "Interferon", "Cholesterol", "Fibrosis",
 
-        # immune: "Gruosso2019", "Hamy2016", "Teschendorff2007", "Yang2018",
-        # interferon: "Gruosso2019", "Desmedt2008", "Farmer2009", "Hamy2016", "Nirmal2018",
-        # cholesterol: "Gruosso2019", "Ehmsen2019", "Simigdala2016", "Sorrentino2014",
-        # fibrosis: "Gruosso2019", "Bergamaschi2008","Hamy2016", "Naba2014", "Triulzi2013",
-
+        # immune: "Hamy2016","Yang2018",
+        # interferon: "Gruosso2019", "Farmer2009", "Hamy2016", "Nirmal2018",
+        # cholesterol:"Sorrentino2014",
+        # fibrosis: "Hamy2016", "Naba2014", "Triulzi2013",
 
         # immune + interferon + cholesterol + fibrosis
-        "Gruosso2019", "Farmer2009", "Bergamaschi2008", "Hamy2016", "Nirmal2018",
-        "Teschendorff2007", "Yang2018", "Desmedt2008",
+        "Gruosso2019", "Farmer2009", "Hamy2016", "Nirmal2018",
+        "Yang2018",
         "Naba2014", "Triulzi2013",
-        "Ehmsen2019", "Simigdala2016", "Sorrentino2014",
+        "Sorrentino2014",
 
         # cell
         "T.Cell", "Cyto.Lympho", "B.Cell", "NK.Cell",
@@ -322,28 +312,37 @@ for(subtype in c("TN", "HR")){
                                         Text_or = "OR(95%CI)", # "Log-OR (95% CI)"
                                         Text_p = "P(Padj)", # "Pval (Pval-adj)"
                                         Text_het = "Q(P),I^2" # "Cochran's Q (Q-Pval), I^2"
-      )) %>% factor(levels = c("OR(95%CI)", "P(Padj)", "Q(P),I^2"))) %>%
+      )) %>% factor(levels = c("OR(95%CI)", "P(Padj)", "Q(P),I^2"),
+                    labels =  c(expression("OR"^a*"(95%CI) "),
+                                "P(Padj)",
+                                expression("Q(P),I"^2))
+                    )
+      ) %>%
     ggplot() +
     geom_text(aes(x = key, y = Module_name, label = value),
               size = inner_text_size) +
     facet_grid(facets = Module_class ~ 1, switch = "y",
                scales = "free_y", space = "free_y") +
     theme_bw() +
+    scale_x_discrete(labels = ~parse(text = .x)) +
+    # Ref: https://stackoverflow.com/questions/73014834/how-to-create-subscripts-in-the-names-of-variables-in-r
     theme(
       axis.text.y.left = element_blank(),
       axis.ticks.y.left = element_blank(),
       # to manage space in ggarrage()
-      plot.margin = margin(t = 5.5, r = 5.5, b = 5.5, l = 0.1, unit = "pt")
+      plot.margin = margin(t = 5.5, r = 5.5, b = 4, l = 0.1, unit = "pt") # b=4 to accommodate subscript
       # plot.margin = margin(t = 5.5, r = 5.5, b = 5.5, l = 5.5, unit = "pt") # default margin
     )
 }
 
 p <- ggpubr::ggarrange(
-  p_prog$TN + th_finher + labs(x = "Log-OR") +
+  p_prog$TN + th_finher + # labs(x = "Log-OR") +
+    labs(x = expression("Log(OR"^a*")  ")) +
     theme(axis.title.x.bottom = element_text(size = outer_text_size-1)),
   p_prog_annot$TN + th_finher + labs(x = "") + theme(strip.text.y = element_blank()),
 
-  p_prog$HR + th_finher + labs(x = "Log-OR") +
+  p_prog$HR + th_finher + # labs(x = "Log-OR") +
+    labs(x = expression("Log(OR"^a*")  ")) +
     theme(axis.text.y = element_blank(),
           axis.title.x.bottom = element_text(size = outer_text_size-1)),
   p_prog_annot$HR + th_finher + labs(x = "") + theme(strip.text.y = element_blank()),
@@ -351,13 +350,15 @@ p <- ggpubr::ggarrange(
   ncol = 4,
   nrow = 1,
   # widths = c(.22,.37,.13,.37),
-  widths = c(.25,.36,.115,.36),
+  widths = c(.24,.36,.12,.36),
   labels = c("A","","B",""),
   hjust = c(-0.5,-0.5,0.5,-0.5) #default = -0.5
 )
 
-pdf(file = str_c(out_figures,"geo_prognosis_individual.sig_v2.2.pdf") %>% str_to_lower(),
-    width = 7.5, height = 9)
+# pdf(file = str_c(out_figures,"geo_prognosis_individual.sig_v2.1.pdf") %>% str_to_lower(),
+#     width = 7.5, height = 6.5)
+pdf(file = str_c(out_figures,"geo_individual-sig_finneo_prognosis.pdf") %>% str_to_lower(),
+    width = 7.5, height = 6.5)
 print(p)
 dev.off()
 
@@ -389,6 +390,7 @@ geo_prog_merged <-
 
     # Formatting prognosis annotation
     Text_or = str_c(
+      # Estimate in Log scale; exp(Estimate) in original scale(ratio)
       exp(Estimate) %>% formatC(digits = 1, width = 1, format = "f"), # , flag = "  "
       "(",
       exp(Lower_ci) %>% formatC(digits = 1, width = 1, format = "f"), # , flag = "  "
@@ -441,34 +443,27 @@ geo_prog_merged <-
       str_detect(Module_name, "Pooled") ~ "Published-pooled",
       str_detect(Module_name, "MCPcounter") ~ "Cell",
 
-      Module_name == "Gruosso2019_Immune" ~ "Immune",
       Module_name == "Hamy2016_Immune" ~ "Immune",
-      Module_name == "Teschendorff2007_Immune" ~ "Immune",
       Module_name == "Yang2018_Immune" ~ "Immune",
-      Module_name == "Desmedt2008_STAT1" ~ "Immune",
 
       Module_name == "Gruosso2019_Interferon" ~ "Interferon",
       Module_name == "Farmer2009_MX1" ~ "Interferon",
       Module_name == "Hamy2016_Interferon" ~ "Interferon",
       Module_name == "Nirmal2018_Interferon" ~ "Interferon",
 
-      Module_name == "Gruosso2019_Fibrosis" ~ "Fibrosis",
+
       Module_name == "Hamy2016_Ecm" ~ "Fibrosis",
       Module_name == "Naba2014_Ecmcore" ~ "Fibrosis",
       Module_name == "Triulzi2013_Ecm" ~ "Fibrosis",
 
-      Module_name == "Gruosso2019_Cholesterol" ~ "Cholesterol", #"Cholesterol"
-      Module_name == "Ehmsen2019_Chol" ~ "Cholesterol",
-      Module_name == "Simigdala2016_Chol" ~ "Cholesterol",
-      Module_name == "Sorrentino2014_Chol" ~ "Cholesterol",
+      Module_name == "Sorrentino2014_Chol" ~ "Chol.", #"Cholesterol"
 
       TRUE ~ "Unknown"
-
     ) %>%
       factor(
         levels = c(
           "H&E", "De-novo",
-          "Immune", "Interferon", "Cholesterol", "Fibrosis",
+          "Immune", "Interferon", "Chol.", "Fibrosis",
           "Published-pooled", "Cell")
       ),
 
@@ -477,27 +472,19 @@ geo_prog_merged <-
       str_replace("Pooled","") %>%
       str_replace("MCPcounter","") %>%
 
-      str_replace("Gruosso2019_Immune","Gruosso2019") %>%
       str_replace("Hamy2016_Immune","Hamy2016") %>%
-      str_replace("Teschendorff2007_Immune","Teschendorff2007") %>%
       str_replace("Yang2018_Immune","Yang2018") %>%
-      str_replace("Desmedt2008_STAT1","Desmedt2008") %>%
 
       str_replace("Gruosso2019_Interferon","Gruosso2019") %>%
       str_replace("Farmer2009_MX1","Farmer2009") %>%
       str_replace("Hamy2016_Interferon","Hamy2016") %>%
       str_replace("Nirmal2018_Interferon","Nirmal2018") %>%
 
-      str_replace("Gruosso2019_Fibrosis","Gruosso2019") %>%
       str_replace("Hamy2016_Ecm","Hamy2016") %>%
       str_replace("Naba2014_Ecmcore","Naba2014") %>%
       str_replace("Triulzi2013_Ecm","Triulzi2013") %>%
 
-      str_replace("Gruosso2019_Cholesterol","Gruosso2019") %>%
-      str_replace("Ehmsen2019_Chol","Ehmsen2019") %>%
-      str_replace("Simigdala2016_Chol","Simigdala2016") %>%
       str_replace("Sorrentino2014_Chol","Sorrentino2014") %>%
-
 
       str_replace("Tcell","T.Cell") %>%
       str_replace("B.Lineage","B.Cell") %>%
@@ -505,7 +492,6 @@ geo_prog_merged <-
       str_replace("Myeloid.Dendritic","M.Dendritic") %>%
       # Endothelial
       str_replace("Fibroblasts","Fibroblast") %>%
-
 
       str_replace("_","") %>%
 
@@ -520,17 +506,16 @@ geo_prog_merged <-
         # denovo + pooled
         "TILsig", "Immune","ECM", "Interferon", "Cholesterol", "Fibrosis",
 
-        # immune: "Gruosso2019", "Hamy2016", "Teschendorff2007", "Yang2018",
-        # interferon: "Gruosso2019", "Desmedt2008", "Farmer2009", "Hamy2016", "Nirmal2018",
-        # cholesterol: "Gruosso2019", "Ehmsen2019", "Simigdala2016", "Sorrentino2014",
-        # fibrosis: "Gruosso2019", "Bergamaschi2008","Hamy2016", "Naba2014", "Triulzi2013",
-
+        # immune: "Hamy2016","Yang2018",
+        # interferon: "Gruosso2019", "Farmer2009", "Hamy2016", "Nirmal2018",
+        # cholesterol:"Sorrentino2014",
+        # fibrosis: "Hamy2016", "Naba2014", "Triulzi2013",
 
         # immune + interferon + cholesterol + fibrosis
-        "Gruosso2019", "Farmer2009", "Bergamaschi2008", "Hamy2016", "Nirmal2018",
-        "Teschendorff2007", "Yang2018", "Desmedt2008",
+        "Gruosso2019", "Farmer2009", "Hamy2016", "Nirmal2018",
+        "Yang2018",
         "Naba2014", "Triulzi2013",
-        "Ehmsen2019", "Simigdala2016", "Sorrentino2014",
+        "Sorrentino2014",
 
         # cell
         "T.Cell", "Cyto.Lympho", "B.Cell", "NK.Cell",
@@ -578,28 +563,37 @@ for(subtype in c("TN", "HR")){
         Text_or = "OR(95%CI)", # "Log-OR (95% CI)"
         Text_p = "P(Padj)", # "Pval (Pval-adj)"
         Text_het = "Q(P),I^2" # "Cochran's Q (Q-Pval), I^2"
-      )) %>% factor(levels = c("OR(95%CI)", "P(Padj)", "Q(P),I^2"))) %>%
+      )) %>% factor(levels = c("OR(95%CI)", "P(Padj)", "Q(P),I^2"),
+                    labels =  c(expression("OR"^a*"(95%CI) "),
+                                "P(Padj)",
+                                expression("Q(P),I"^2))
+                    )
+      ) %>%
     ggplot() +
     geom_text(aes(x = key, y = Module_name, label = value),
               size = inner_text_size) +
     facet_grid(facets = Module_class ~ 1, switch = "y",
                scales = "free_y", space = "free_y") +
     theme_bw() +
+    scale_x_discrete(labels = ~parse(text = .x)) +
+    # Ref: https://stackoverflow.com/questions/73014834/how-to-create-subscripts-in-the-names-of-variables-in-r
     theme(
       axis.text.y.left = element_blank(),
       axis.ticks.y.left = element_blank(),
       # to manage space in ggarrage()
-      plot.margin = margin(t = 5.5, r = 5.5, b = 5.5, l = 0.1, unit = "pt")
+      plot.margin = margin(t = 5.5, r = 5.5, b = 4, l = 0.1, unit = "pt") # b=4 to accommodate subscript
       # plot.margin = margin(t = 5.5, r = 5.5, b = 5.5, l = 5.5, unit = "pt") # default margin
     )
 }
 
 p <- ggpubr::ggarrange(
-  p_prog$TN + th_finher + labs(x = "Log-OR") +
+  p_prog$TN + th_finher + # labs(x = "Log-OR") +
+    labs(x = expression("Log(OR"^a*") ")) +
     theme(axis.title.x.bottom = element_text(size = outer_text_size-1)),
   p_prog_annot$TN + th_finher + labs(x = "") + theme(strip.text.y = element_blank()),
 
-  p_prog$HR + th_finher + labs(x = "Log-OR") +
+  p_prog$HR + th_finher + # labs(x = "Log-OR") +
+    labs(x = expression("Log(OR"^a*") ")) +
     theme(axis.text.y = element_blank(),
           axis.title.x.bottom = element_text(size = outer_text_size-1)),
   p_prog_annot$HR + th_finher + labs(x = "") + theme(strip.text.y = element_blank()),
@@ -607,13 +601,15 @@ p <- ggpubr::ggarrange(
   ncol = 4,
   nrow = 1,
   # widths = c(.22,.37,.13,.37),
-  widths = c(.22,.36,.14,.36),
+  widths = c(.225,.36,.135,.36),
   labels = c("A","","B",""),
   hjust = c(-0.5,-0.5,0.5,-0.5) #default = -0.5
 )
 
-pdf(file = str_c(out_figures,"geo_prognosis_pooled.sig_v2.2.pdf") %>% str_to_lower(),
-    width = 7.5, height = 5)
+# pdf(file = str_c(out_figures,"geo_prognosis_pooled.sig_v2.1.pdf") %>% str_to_lower(),
+#     width = 7.5, height = 4.25)
+pdf(file = str_c(out_figures,"geo_pooled-sig_finneo_prognosis.pdf") %>% str_to_lower(),
+    width = 7.5, height = 4.25)
 print(p)
 dev.off()
 
@@ -689,6 +685,7 @@ geo_inter_merged <-
 
     # Formatting prognosis annotation
     Text_or = str_c(
+      # Estimate in Log scale; exp(Estimate) in original scale(ratio)
       exp(Estimate) %>% formatC(digits = 1, width = 1, format = "f"), # , flag = "  "
       "(",
       exp(l95) %>% formatC(digits = 1, width = 1, format = "f"), # , flag = "  "
@@ -718,7 +715,7 @@ geo_inter_merged <-
     # manually aligning non-MTA OR text
     Text_or_size = purrr::map_int(Text_or,str_length),
     Text_or = format(x = Text_or, width = max(Text_or_size), justify = "left"),
-    Text_or = str_pad(Text_or, max(Text_or_size) + 9, "left", " "),
+    Text_or = str_pad(Text_or, max(Text_or_size) + 12.5, "left", " "),
 
     Text_het = if_else(
       is.na(Q) & is.na(Q_p) & is.na(I2),
@@ -749,7 +746,6 @@ geo_inter_merged <-
       factor(levels = c("AAA+T+TRA", "AAA", "A0A+T", "AAA+T", "HR", "HER2", "TN")),
 
 
-
     Module_name = str_split_fixed(string = Module_name, pattern = ":", n = 2)[, 1] %>%
       str_replace("scaled_",""),
 
@@ -761,34 +757,27 @@ geo_inter_merged <-
       str_detect(Module_name, "Pooled") ~ "Published-pooled",
       str_detect(Module_name, "MCPcounter") ~ "Cell",
 
-      Module_name == "Gruosso2019_Immune" ~ "Immune",
       Module_name == "Hamy2016_Immune" ~ "Immune",
-      Module_name == "Teschendorff2007_Immune" ~ "Immune",
       Module_name == "Yang2018_Immune" ~ "Immune",
-      Module_name == "Desmedt2008_STAT1" ~ "Immune",
 
       Module_name == "Gruosso2019_Interferon" ~ "Interferon",
       Module_name == "Farmer2009_MX1" ~ "Interferon",
       Module_name == "Hamy2016_Interferon" ~ "Interferon",
       Module_name == "Nirmal2018_Interferon" ~ "Interferon",
 
-      Module_name == "Gruosso2019_Fibrosis" ~ "Fibrosis",
+
       Module_name == "Hamy2016_Ecm" ~ "Fibrosis",
       Module_name == "Naba2014_Ecmcore" ~ "Fibrosis",
       Module_name == "Triulzi2013_Ecm" ~ "Fibrosis",
 
-      Module_name == "Gruosso2019_Cholesterol" ~ "Cholesterol", #"Cholesterol"
-      Module_name == "Ehmsen2019_Chol" ~ "Cholesterol",
-      Module_name == "Simigdala2016_Chol" ~ "Cholesterol",
-      Module_name == "Sorrentino2014_Chol" ~ "Cholesterol",
+      Module_name == "Sorrentino2014_Chol" ~ "Chol.", #"Cholesterol"
 
       TRUE ~ "Unknown"
-
     ) %>%
       factor(
         levels = c(
           "H&E", "De-novo",
-          "Immune", "Interferon", "Cholesterol", "Fibrosis",
+          "Immune", "Interferon", "Chol.", "Fibrosis",
           "Published-pooled", "Cell")
       ),
 
@@ -797,27 +786,19 @@ geo_inter_merged <-
       str_replace("Pooled","") %>%
       str_replace("MCPcounter","") %>%
 
-      str_replace("Gruosso2019_Immune","Gruosso2019") %>%
       str_replace("Hamy2016_Immune","Hamy2016") %>%
-      str_replace("Teschendorff2007_Immune","Teschendorff2007") %>%
       str_replace("Yang2018_Immune","Yang2018") %>%
-      str_replace("Desmedt2008_STAT1","Desmedt2008") %>%
 
       str_replace("Gruosso2019_Interferon","Gruosso2019") %>%
       str_replace("Farmer2009_MX1","Farmer2009") %>%
       str_replace("Hamy2016_Interferon","Hamy2016") %>%
       str_replace("Nirmal2018_Interferon","Nirmal2018") %>%
 
-      str_replace("Gruosso2019_Fibrosis","Gruosso2019") %>%
       str_replace("Hamy2016_Ecm","Hamy2016") %>%
       str_replace("Naba2014_Ecmcore","Naba2014") %>%
       str_replace("Triulzi2013_Ecm","Triulzi2013") %>%
 
-      str_replace("Gruosso2019_Cholesterol","Gruosso2019") %>%
-      str_replace("Ehmsen2019_Chol","Ehmsen2019") %>%
-      str_replace("Simigdala2016_Chol","Simigdala2016") %>%
       str_replace("Sorrentino2014_Chol","Sorrentino2014") %>%
-
 
       str_replace("Tcell","T.Cell") %>%
       str_replace("B.Lineage","B.Cell") %>%
@@ -825,7 +806,6 @@ geo_inter_merged <-
       str_replace("Myeloid.Dendritic","M.Dendritic") %>%
       # Endothelial
       str_replace("Fibroblasts","Fibroblast") %>%
-
 
       str_replace("_","") %>%
 
@@ -840,17 +820,16 @@ geo_inter_merged <-
         # denovo + pooled
         "TILsig", "Immune","ECM", "Interferon", "Cholesterol", "Fibrosis",
 
-        # immune: "Gruosso2019", "Hamy2016", "Teschendorff2007", "Yang2018",
-        # interferon: "Gruosso2019", "Desmedt2008", "Farmer2009", "Hamy2016", "Nirmal2018",
-        # cholesterol: "Gruosso2019", "Ehmsen2019", "Simigdala2016", "Sorrentino2014",
-        # fibrosis: "Gruosso2019", "Bergamaschi2008","Hamy2016", "Naba2014", "Triulzi2013",
-
+        # immune: "Hamy2016","Yang2018",
+        # interferon: "Gruosso2019", "Farmer2009", "Hamy2016", "Nirmal2018",
+        # cholesterol:"Sorrentino2014",
+        # fibrosis: "Hamy2016", "Naba2014", "Triulzi2013",
 
         # immune + interferon + cholesterol + fibrosis
-        "Gruosso2019", "Farmer2009", "Bergamaschi2008", "Hamy2016", "Nirmal2018",
-        "Teschendorff2007", "Yang2018", "Desmedt2008",
+        "Gruosso2019", "Farmer2009", "Hamy2016", "Nirmal2018",
+        "Yang2018",
         "Naba2014", "Triulzi2013",
-        "Ehmsen2019", "Simigdala2016", "Sorrentino2014",
+        "Sorrentino2014",
 
         # cell
         "T.Cell", "Cyto.Lympho", "B.Cell", "NK.Cell",
@@ -858,6 +837,7 @@ geo_inter_merged <-
         "Endothelial", "Fibroblast"
 
       ) %>% rev()
+
       ),
 
     Analysis_group = str_c(Subtype, ":", Analysis)
@@ -910,7 +890,11 @@ for(anagroup in geo_inter_merged$Analysis_group %>% unique()){
     tidyr::gather("key", "value",
                   "OR(95%CI)", "P(Padj)", "Q(P),I^2") %>%
     dplyr::mutate(key = key %>%
-                    factor(levels = c("OR(95%CI)", "P(Padj)", "Q(P),I^2"))) %>%
+                    factor(levels = c("OR(95%CI)", "P(Padj)", "Q(P),I^2"),
+                           labels =  c(expression("OR"^a*"(95%CI) "),
+                                       "P(Padj)",
+                                       expression("Q(P),I"^2)))
+                  ) %>%
     ggplot() +
     geom_text(aes(x = key, y = Module_name, label = value, color = Arm_or_subtype, group = Arm_or_subtype),
               position = ggstance::position_dodgev(height = .75),
@@ -922,11 +906,13 @@ for(anagroup in geo_inter_merged$Analysis_group %>% unique()){
                scales = "free_y",
                space = "free_y") +
     theme_bw() +
+    scale_x_discrete(labels = ~parse(text = .x)) +
+    # Ref: https://stackoverflow.com/questions/73014834/how-to-create-subscripts-in-the-names-of-variables-in-r
     theme(
       axis.text.y.left = element_blank(),
       axis.ticks.y.left = element_blank(),
       # to manage space in ggarrage()
-      plot.margin = margin(t = 5.5, r = 5.5, b = 5.5, l = 0.1, unit = "pt")
+      plot.margin = margin(t = 5.5, r = 5.5, b = 4, l = 0.1, unit = "pt") # b=4 to accommodate subscript
       # plot.margin = margin(t = 5.5, r = 5.5, b = 5.5, l = 5.5, unit = "pt") # default margin
     )
 }
@@ -934,11 +920,13 @@ for(anagroup in geo_inter_merged$Analysis_group %>% unique()){
 
 
 p <- ggpubr::ggarrange(
-  p_inter$`TN:AAA.T_or_NoT` + th_finher + labs(x = "Log-OR") +
+  p_inter$`TN:AAA.T_or_NoT` + th_finher + # labs(x = "Log-OR") +
+    labs(x = expression("Log(OR"^a*") ")) +
     theme(axis.title.x.bottom = element_text(size = outer_text_size-1)),
   p_inter_annot$`TN:AAA.T_or_NoT` + th_finher + labs(x = "") + theme(strip.text.y = element_blank()),
 
-  p_inter$`HR:AAA.T_or_NoT` + th_finher + labs(x = "Log-OR") +
+  p_inter$`HR:AAA.T_or_NoT` + th_finher + # labs(x = "Log-OR") +
+    labs(x = expression("Log(OR"^a*") ")) +
     theme(axis.text.y = element_blank(),
           axis.title.x.bottom = element_text(size = outer_text_size-1)),
   p_inter_annot$`HR:AAA.T_or_NoT` + th_finher + labs(x = "") + theme(strip.text.y = element_blank()),
@@ -946,17 +934,17 @@ p <- ggpubr::ggarrange(
   ncol = 4,
   nrow = 1,
   # widths = c(.21,.37,.14,.37),
-  widths = c(.25,.36,.115,.36),
+  widths = c(.24,.36,.12,.36),
   labels = c("A","","B",""),
   hjust = c(-0.5,-0.5,0.5,-0.5) #default = -0.5
 )
 
-pdf(file = str_c(out_figures,"geo_mta_interaction_individual.sig_v2.2.pdf") %>% str_to_lower(),
-    width = 7.5, height = 9)
+# pdf(file = str_c(out_figures,"geo_mta_interaction_individual.sig_v2.1.pdf") %>% str_to_lower(),
+#     width = 7.5, height = 6.5)
+pdf(file = str_c(out_figures,"geo_individual-sig_finneo_pcr-mta-immune_interactionv.pdf") %>% str_to_lower(),
+    width = 7.5, height = 6.5)
 print(p)
 dev.off()
-
-
 
 
 # pooled.sig >>>>>>>>>>>>>>>>>>
@@ -1017,6 +1005,7 @@ geo_inter_merged <-
 
     # Formatting prognosis annotation
     Text_or = str_c(
+      # Estimate in Log scale; exp(Estimate) in original scale(ratio)
       exp(Estimate) %>% formatC(digits = 1, width = 1, format = "f"), # , flag = "  "
       "(",
       exp(l95) %>% formatC(digits = 1, width = 1, format = "f"), # , flag = "  "
@@ -1077,7 +1066,6 @@ geo_inter_merged <-
       factor(levels = c("AAA+T+TRA", "AAA", "A0A+T", "AAA+T", "HR", "HER2", "TN")),
 
 
-
     Module_name = str_split_fixed(string = Module_name, pattern = ":", n = 2)[, 1] %>%
       str_replace("scaled_",""),
 
@@ -1089,34 +1077,27 @@ geo_inter_merged <-
       str_detect(Module_name, "Pooled") ~ "Published-pooled",
       str_detect(Module_name, "MCPcounter") ~ "Cell",
 
-      Module_name == "Gruosso2019_Immune" ~ "Immune",
       Module_name == "Hamy2016_Immune" ~ "Immune",
-      Module_name == "Teschendorff2007_Immune" ~ "Immune",
       Module_name == "Yang2018_Immune" ~ "Immune",
-      Module_name == "Desmedt2008_STAT1" ~ "Immune",
 
       Module_name == "Gruosso2019_Interferon" ~ "Interferon",
       Module_name == "Farmer2009_MX1" ~ "Interferon",
       Module_name == "Hamy2016_Interferon" ~ "Interferon",
       Module_name == "Nirmal2018_Interferon" ~ "Interferon",
 
-      Module_name == "Gruosso2019_Fibrosis" ~ "Fibrosis",
+
       Module_name == "Hamy2016_Ecm" ~ "Fibrosis",
       Module_name == "Naba2014_Ecmcore" ~ "Fibrosis",
       Module_name == "Triulzi2013_Ecm" ~ "Fibrosis",
 
-      Module_name == "Gruosso2019_Cholesterol" ~ "Cholesterol", #"Cholesterol"
-      Module_name == "Ehmsen2019_Chol" ~ "Cholesterol",
-      Module_name == "Simigdala2016_Chol" ~ "Cholesterol",
-      Module_name == "Sorrentino2014_Chol" ~ "Cholesterol",
+      Module_name == "Sorrentino2014_Chol" ~ "Chol.", #"Cholesterol"
 
       TRUE ~ "Unknown"
-
     ) %>%
       factor(
         levels = c(
           "H&E", "De-novo",
-          "Immune", "Interferon", "Cholesterol", "Fibrosis",
+          "Immune", "Interferon", "Chol.", "Fibrosis",
           "Published-pooled", "Cell")
       ),
 
@@ -1125,27 +1106,19 @@ geo_inter_merged <-
       str_replace("Pooled","") %>%
       str_replace("MCPcounter","") %>%
 
-      str_replace("Gruosso2019_Immune","Gruosso2019") %>%
       str_replace("Hamy2016_Immune","Hamy2016") %>%
-      str_replace("Teschendorff2007_Immune","Teschendorff2007") %>%
       str_replace("Yang2018_Immune","Yang2018") %>%
-      str_replace("Desmedt2008_STAT1","Desmedt2008") %>%
 
       str_replace("Gruosso2019_Interferon","Gruosso2019") %>%
       str_replace("Farmer2009_MX1","Farmer2009") %>%
       str_replace("Hamy2016_Interferon","Hamy2016") %>%
       str_replace("Nirmal2018_Interferon","Nirmal2018") %>%
 
-      str_replace("Gruosso2019_Fibrosis","Gruosso2019") %>%
       str_replace("Hamy2016_Ecm","Hamy2016") %>%
       str_replace("Naba2014_Ecmcore","Naba2014") %>%
       str_replace("Triulzi2013_Ecm","Triulzi2013") %>%
 
-      str_replace("Gruosso2019_Cholesterol","Gruosso2019") %>%
-      str_replace("Ehmsen2019_Chol","Ehmsen2019") %>%
-      str_replace("Simigdala2016_Chol","Simigdala2016") %>%
       str_replace("Sorrentino2014_Chol","Sorrentino2014") %>%
-
 
       str_replace("Tcell","T.Cell") %>%
       str_replace("B.Lineage","B.Cell") %>%
@@ -1153,7 +1126,6 @@ geo_inter_merged <-
       str_replace("Myeloid.Dendritic","M.Dendritic") %>%
       # Endothelial
       str_replace("Fibroblasts","Fibroblast") %>%
-
 
       str_replace("_","") %>%
 
@@ -1168,17 +1140,16 @@ geo_inter_merged <-
         # denovo + pooled
         "TILsig", "Immune","ECM", "Interferon", "Cholesterol", "Fibrosis",
 
-        # immune: "Gruosso2019", "Hamy2016", "Teschendorff2007", "Yang2018",
-        # interferon: "Gruosso2019", "Desmedt2008", "Farmer2009", "Hamy2016", "Nirmal2018",
-        # cholesterol: "Gruosso2019", "Ehmsen2019", "Simigdala2016", "Sorrentino2014",
-        # fibrosis: "Gruosso2019", "Bergamaschi2008","Hamy2016", "Naba2014", "Triulzi2013",
-
+        # immune: "Hamy2016","Yang2018",
+        # interferon: "Gruosso2019", "Farmer2009", "Hamy2016", "Nirmal2018",
+        # cholesterol:"Sorrentino2014",
+        # fibrosis: "Hamy2016", "Naba2014", "Triulzi2013",
 
         # immune + interferon + cholesterol + fibrosis
-        "Gruosso2019", "Farmer2009", "Bergamaschi2008", "Hamy2016", "Nirmal2018",
-        "Teschendorff2007", "Yang2018", "Desmedt2008",
+        "Gruosso2019", "Farmer2009", "Hamy2016", "Nirmal2018",
+        "Yang2018",
         "Naba2014", "Triulzi2013",
-        "Ehmsen2019", "Simigdala2016", "Sorrentino2014",
+        "Sorrentino2014",
 
         # cell
         "T.Cell", "Cyto.Lympho", "B.Cell", "NK.Cell",
@@ -1186,6 +1157,7 @@ geo_inter_merged <-
         "Endothelial", "Fibroblast"
 
       ) %>% rev()
+
       ),
 
     Analysis_group = str_c(Subtype, ":", Analysis)
@@ -1238,7 +1210,11 @@ for(anagroup in geo_inter_merged$Analysis_group %>% unique()){
     tidyr::gather("key", "value",
                   "OR(95%CI)", "P(Padj)", "Q(P),I^2") %>%
     dplyr::mutate(key = key %>%
-                    factor(levels = c("OR(95%CI)", "P(Padj)", "Q(P),I^2"))) %>%
+                    factor(levels = c("OR(95%CI)", "P(Padj)", "Q(P),I^2"),
+                           labels =  c(expression("OR"^a*"(95%CI) "),
+                                       "P(Padj)",
+                                       expression("Q(P),I"^2)))
+                  ) %>%
     ggplot() +
     geom_text(aes(x = key, y = Module_name, label = value, color = Arm_or_subtype, group = Arm_or_subtype),
               position = ggstance::position_dodgev(height = .75),
@@ -1250,11 +1226,13 @@ for(anagroup in geo_inter_merged$Analysis_group %>% unique()){
                scales = "free_y",
                space = "free_y") +
     theme_bw() +
+    scale_x_discrete(labels = ~parse(text = .x)) +
+    # Ref: https://stackoverflow.com/questions/73014834/how-to-create-subscripts-in-the-names-of-variables-in-r
     theme(
       axis.text.y.left = element_blank(),
       axis.ticks.y.left = element_blank(),
       # to manage space in ggarrage()
-      plot.margin = margin(t = 5.5, r = 5.5, b = 5.5, l = 0.1, unit = "pt")
+      plot.margin = margin(t = 5.5, r = 5.5, b = 4, l = 0.1, unit = "pt") # b=4 to accommodate subscript
       # plot.margin = margin(t = 5.5, r = 5.5, b = 5.5, l = 5.5, unit = "pt") # default margin
     )
 }
@@ -1262,11 +1240,13 @@ for(anagroup in geo_inter_merged$Analysis_group %>% unique()){
 
 
 p <- ggpubr::ggarrange(
-  p_inter$`TN:AAA.T_or_NoT` + th_finher + labs(x = "Log-OR") +
+  p_inter$`TN:AAA.T_or_NoT` + th_finher + # labs(x = "Log-OR") +
+    labs(x = expression("Log(OR"^a*") ")) +
     theme(axis.title.x.bottom = element_text(size = outer_text_size-1)),
   p_inter_annot$`TN:AAA.T_or_NoT` + th_finher + labs(x = "") + theme(strip.text.y = element_blank()),
 
-  p_inter$`HR:AAA.T_or_NoT` + th_finher + labs(x = "Log-OR") +
+  p_inter$`HR:AAA.T_or_NoT` + th_finher + # labs(x = "Log-OR") +
+    labs(x = expression("Log(OR"^a*") ")) +
     theme(axis.text.y = element_blank(),
           axis.title.x.bottom = element_text(size = outer_text_size-1)),
   p_inter_annot$`HR:AAA.T_or_NoT` + th_finher + labs(x = "") + theme(strip.text.y = element_blank()),
@@ -1274,13 +1254,15 @@ p <- ggpubr::ggarrange(
   ncol = 4,
   nrow = 1,
   # widths = c(.21,.37,.14,.37),
-  widths = c(.22,.36,.14,.36),
+  widths = c(.225,.36,.135,.36),
   labels = c("A","","B",""),
   hjust = c(-0.5,-0.5,0.5,-0.5) #default = -0.5
 )
 
-pdf(file = str_c(out_figures,"geo_mta_interaction_pooled.sig_v2.2.pdf") %>% str_to_lower(),
-    width = 7.5, height = 5)
+# pdf(file = str_c(out_figures,"geo_mta_interaction_pooled.sig_v2.1.pdf") %>% str_to_lower(),
+#     width = 7.5, height = 4.25)
+pdf(file = str_c(out_figures,"geo_pooled-sig_finneo_pcr-mta-immune_interaction.pdf") %>% str_to_lower(),
+    width = 7.5, height = 4.25)
 print(p)
 dev.off()
 
@@ -1290,7 +1272,12 @@ dev.off()
 # ==============================================================================
 
 
+# Clear memory
+# ==============================================================================
 
 
+rm(geo_prog, geo_prog_finneo,
+   geo_inter, geo_inter_finneo)
 
-
+#
+# ==============================================================================

@@ -1,4 +1,4 @@
-# s11_supp_firth_geo_exploring_prognosis.R
+# s10.3_supp_firth_geo_exploring_prognosis_finneo.R
 
 
 # What the script does?
@@ -8,7 +8,7 @@
 
 
 
-# Script strucutre
+# Script structure
 # >>>>>>>>>>>>>>>>
 # 1. Load and summarize clin_neoadj_finneo.
 # 2. Explore prognosis.
@@ -56,14 +56,14 @@ clin_neoadj_finneo %>%
 
 
 # Analysis
-# 1. Per subtype prognosis (hr-arm-study heterogenity)
-# 2. Pan-subtype prognosis (subtype-hr-arm-study heterogenity)
-
-# Analysis note 1:
-# For the main analysis consider HER2 as a whole (i.e. both HR- and HR+ HER2) with
-# stratification based on hr-arm-study.
-# Further as a supplementary analysis, repeat the same analysis (as in HER2 whole)
-# in each HR-HER2+ and HR+HER2+ independetly.
+# 1. Per subtype prognosis (hr-arm-study heterogeneity)
+# 2. Focus the analysis on AAA containing regimens due to large sample size.
+# 2. Discard AOA regimen
+# 3. Discard HER2 subtype (no AAA+/-T interaction analysis is performed in this subtype)
+# 4. Script structure:
+#     Create geo_inter (interaction summary) list object.
+#     Each element represent all analysis done on each subtype.
+#
 
 # Analysis note 2:
 # By definition, prognosis is the natural course of disease independent of
@@ -76,6 +76,7 @@ clin_neoadj_finneo %>%
 
 # All neoadj regimen with Strata info
 clin_neoadj_finneo %>%
+  dplyr::filter(Subtype_ihc != "HER2") %>%
   dplyr::group_by(
     Subtype = Subtype_ihc,
     Hr,
@@ -87,41 +88,28 @@ clin_neoadj_finneo %>%
   as.data.frame()
 
 #    Subtype  Hr                                                                  Arm                 Strata   N Event Event_percet
-# 1     HER2 neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     GSE20194:AAA+T:HR-  25    13    52.000000
-# 2     HER2 neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     GSE32646:AAA+T:HR-  18     9    50.000000
-# 3     HER2 neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     GSE50948:AAA+T:HR-  37     9    24.324324
-# 4     HER2 neg     AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_therapy GSE42822:AAA+T+TRA:HR-  15    10    66.666667
-# 5     HER2 neg     AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_therapy GSE50948:AAA+T+TRA:HR-  43    25    58.139535
+# 1      HR pos   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE25066:A0A+T  35     3     8.571429
+# 2      HR pos   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE41998:A0A+T 104    12    11.538462
+# 3      HR pos AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy           GSE20271:AAA  49     3     6.122449
+# 4      HR pos AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy           GSE22093:AAA  42    10    23.809524
+# 5      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE20194:AAA+T 141     9     6.382979
+# 6      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE20271:AAA+T  44     3     6.818182
+# 7      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE23988:AAA+T  32     7    21.875000
+# 8      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE25066:AAA+T 194    22    11.340206
+# 9      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE32646:AAA+T  55     5     9.090909
+# 10      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE42822:AAA+T  29     8    27.586207
+# 11      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE50948:AAA+T  26     4    15.384615
 
-# 6     HER2 pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     GSE20194:AAA+T:HR+  25     4    16.000000
-# 7     HER2 pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     GSE32646:AAA+T:HR+  16     3    18.750000
-# 8     HER2 pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy     GSE50948:AAA+T:HR+  14     4    28.571429
-# 9     HER2 pos     AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_therapy GSE42822:AAA+T+TRA:HR+   9     2    22.222222
-# Note that the above strata with 9 samples create convergense issue !!!!
-# 10    HER2 pos     AAA+Taxane///Trastuzumab///No_hormone_therapy///No_other_therapy GSE50948:AAA+T+TRA:HR+  20     6    30.000000
-
-# 11      HR pos   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE25066:A0A+T  35     3     8.571429
-# 12      HR pos   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE41998:A0A+T 104    12    11.538462
-# 13      HR pos AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy           GSE20271:AAA  49     3     6.122449
-# 14      HR pos AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy           GSE22093:AAA  42    10    23.809524
-# 15      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE20194:AAA+T 141     9     6.382979
-# 16      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE20271:AAA+T  44     3     6.818182
-# 17      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE23988:AAA+T  32     7    21.875000
-# 18      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE25066:AAA+T 194    22    11.340206
-# 19      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE32646:AAA+T  55     5     9.090909
-# 20      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE42822:AAA+T  29     8    27.586207
-# 21      HR pos   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE50948:AAA+T  26     4    15.384615
-
-# 22      TN neg   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE25066:A0A+T  25     6    24.000000
-# 23      TN neg   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE41998:A0A+T 125    51    40.800000
-# 24      TN neg AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy           GSE20271:AAA  28     4    14.285714
-# 25      TN neg AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy           GSE22093:AAA  55    18    32.727273
-# 26      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE20194:AAA+T  64    25    39.062500
-# 27      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE20271:AAA+T  31     9    29.032258
-# 28      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE23988:AAA+T  29    13    44.827586
-# 29      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE25066:AAA+T 119    43    36.134454
-# 30      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE32646:AAA+T  26    10    38.461538
-# 31      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE42822:AAA+T  24    12    50.000000
+# 12      TN neg   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE25066:A0A+T  25     6    24.000000
+# 13      TN neg   A0A+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE41998:A0A+T 125    51    40.800000
+# 14      TN neg AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy           GSE20271:AAA  28     4    14.285714
+# 15      TN neg AAA+noTaxane///No_her2_agent///No_hormone_therapy///No_other_therapy           GSE22093:AAA  55    18    32.727273
+# 16      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE20194:AAA+T  64    25    39.062500
+# 17      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE20271:AAA+T  31     9    29.032258
+# 18      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE23988:AAA+T  29    13    44.827586
+# 19      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE25066:AAA+T 119    43    36.134454
+# 20      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE32646:AAA+T  26    10    38.461538
+# 21      TN neg   AAA+Taxane///No_her2_agent///No_hormone_therapy///No_other_therapy         GSE42822:AAA+T  24    12    50.000000
 
 # Note !!!!!
 # The event rate in HR subtype is low possibily due to lack of hormone therapy
@@ -137,7 +125,7 @@ clin_neoadj_finneo %>%
 # 2. Explore prognosis.
 # ==============================================================================
 
-# Per subtype prognosis (Sereis matrix + Arm (~ Strata) heterogenity)
+# Per subtype prognosis (Series matrix + Arm (~ Strata) heterogeneity)
 
 
 geo_prog <- purrr::map(
@@ -250,7 +238,7 @@ p <- ggplot(ggdf, aes(x = variable, y = value, group = group_var)) +
        subtitle = "GEO prognostic models") +
   facet_wrap(~subtype, ncol = 1)
 
-pdf(file = str_c(out_figures,"Firth_vs_Std_Logistic-GEO_Prognosis.pdf"))
+pdf(file = str_c(out_figures,"GEO_Prognosis_Firth_vs_Std_Logistic.pdf"))
 print(p)
 dev.off()
 
@@ -267,7 +255,7 @@ p <- ggplot(ggdf, aes(x = variable, y = log(value), group = group_var)) +
        subtitle = "GEO prognostic models") +
   facet_wrap(~subtype, ncol = 1)
 
-pdf(file = str_c(out_figures,"Firth_vs_Std_Logistic-GEO_Prognosis_log.pdf"))
+pdf(file = str_c(out_figures,"GEO_Prognosis_log_Firth_vs_Std_Logistic.pdf"))
 print(p)
 dev.off()
 
@@ -278,5 +266,14 @@ dev.off()
 
 
 
+
+
+# Clear memory
+# ==============================================================================
+
+rm(clin_neoadj_finneo, geo_prog)
+
+#
+# ==============================================================================
 
 

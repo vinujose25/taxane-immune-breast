@@ -1,4 +1,4 @@
-# s10_supp_firth_geo_exploring_interaction_v2.1.R
+# s9.3_supp_firth_geo_exploring_interaction_finneo.R
 
 
 
@@ -9,7 +9,7 @@
 
 
 
-# Script strucutre
+# Script structure
 # >>>>>>>>>>>>>>>>
 # 1. Load data.
 # 2. Structure analysis
@@ -111,42 +111,24 @@ clin_neoadj_finneo %>%
 # 10      HR pos       AAA  91
 
 
-# TN analysis
-# 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
-# 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
-# 3. Per subtype global interaction: all-Arm * Sig * pCR
-
-
-# HER2 analysis
-# 1. Per subtype trastuzumab interaction: AAA+Taxane+/-Trastuzumab * Sig * pCR
-
-
-# HR analysis
-# 1. Per subtype taxane interaction: AAA+/-Taxane * Sig * pCR
-# 2. Per subtype chemo-class-combination interaction: (AAA/A0A)+Taxane * Sig * pCR
-# 3. Per subtype global interaction: all-Arm * Sig * pCR
-
-
-# Pan-Subtype (ALL) analysis
-# 1. Subtype interaction in AAA+Taxane: TN/HER2/HR * Sig * pCR
-# 2. Subtype interaction in AAA+noTaxane: TN/HR * Sig * pCR
-# 3. Subtype interaction in A0A+Taxane: TN/HR * Sig * pCR
 
 
 # Analysis note: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #
 # 1. Focus the analysis on AAA containing regimens due to large sample size.
-# 2. Make plots accordingly.
-# 3. Keep the other analysis as supplimentary.
+# 2. Discard AOA regimen
+# 3. Discard HER2 subtype (no AAA+/-T interaction analysis possible)
 # 4. Script structure:
 #     Create geo_inter (interaction summary) list object.
-#     Each elemet represent all anlysis done on each subtype.
+#     Each element represent all analysis done on each subtype.
 #
+
 
 
 
 # All neoadj regimen with Strata info
 clin_neoadj_finneo %>%
+  dplyr::filter(Subtype_ihc != "HER2") %>%
   dplyr::group_by(
     Subtype = Subtype_ihc,
     Hr,
@@ -163,34 +145,22 @@ clin_neoadj_finneo %>%
 # 4       TN neg     AAA+T     GSE25066:AAA+T 119    43    36.134454
 # 5       TN neg     AAA+T     GSE32646:AAA+T  26    10    38.461538
 # 6       TN neg     AAA+T     GSE42822:AAA+T  24    12    50.000000
-# 7       TN neg     A0A+T     GSE25066:A0A+T  25     6    24.000000
-# 8       TN neg     A0A+T     GSE41998:A0A+T 125    51    40.800000
+# 7       TN neg     A0A+T     GSE25066:A0A+T  25     6    24.000000 # not used in analysis
+# 8       TN neg     A0A+T     GSE41998:A0A+T 125    51    40.800000 # not used in analysis
 # 9       TN neg       AAA       GSE20271:AAA  28     4    14.285714
 # 10      TN neg       AAA       GSE22093:AAA  55    18    32.727273
 
-# 11    HER2 neg     AAA+T     GSE20194:AAA+T  25    13    52.000000
-# 12    HER2 neg     AAA+T     GSE32646:AAA+T  18     9    50.000000
-# 13    HER2 neg     AAA+T     GSE50948:AAA+T  37     9    24.324324
-# 14    HER2 neg AAA+T+TRA GSE42822:AAA+T+TRA  15    10    66.666667
-# 15    HER2 neg AAA+T+TRA GSE50948:AAA+T+TRA  43    25    58.139535
-
-# 16    HER2 pos     AAA+T     GSE20194:AAA+T  25     4    16.000000
-# 17    HER2 pos     AAA+T     GSE32646:AAA+T  16     3    18.750000
-# 18    HER2 pos     AAA+T     GSE50948:AAA+T  14     4    28.571429
-# 19    HER2 pos AAA+T+TRA GSE42822:AAA+T+TRA   9     2    22.222222
-# 20    HER2 pos AAA+T+TRA GSE50948:AAA+T+TRA  20     6    30.000000
-
-# 21      HR pos     AAA+T     GSE20194:AAA+T 141     9     6.382979
-# 22      HR pos     AAA+T     GSE20271:AAA+T  44     3     6.818182
-# 23      HR pos     AAA+T     GSE23988:AAA+T  32     7    21.875000
-# 24      HR pos     AAA+T     GSE25066:AAA+T 194    22    11.340206
-# 25      HR pos     AAA+T     GSE32646:AAA+T  55     5     9.090909
-# 26      HR pos     AAA+T     GSE42822:AAA+T  29     8    27.586207
-# 27      HR pos     AAA+T     GSE50948:AAA+T  26     4    15.384615
-# 28      HR pos     A0A+T     GSE25066:A0A+T  35     3     8.571429
-# 29      HR pos     A0A+T     GSE41998:A0A+T 104    12    11.538462
-# 30      HR pos       AAA       GSE20271:AAA  49     3     6.122449
-# 31      HR pos       AAA       GSE22093:AAA  42    10    23.809524
+# 11      HR pos     AAA+T     GSE20194:AAA+T 141     9     6.382979
+# 12      HR pos     AAA+T     GSE20271:AAA+T  44     3     6.818182
+# 13      HR pos     AAA+T     GSE23988:AAA+T  32     7    21.875000
+# 14      HR pos     AAA+T     GSE25066:AAA+T 194    22    11.340206
+# 15      HR pos     AAA+T     GSE32646:AAA+T  55     5     9.090909
+# 16      HR pos     AAA+T     GSE42822:AAA+T  29     8    27.586207
+# 17      HR pos     AAA+T     GSE50948:AAA+T  26     4    15.384615
+# 18      HR pos     A0A+T     GSE25066:A0A+T  35     3     8.571429 # not used in analysis
+# 19      HR pos     A0A+T     GSE41998:A0A+T 104    12    11.538462 # not used in analysis
+# 20      HR pos       AAA       GSE20271:AAA  49     3     6.122449
+# 21      HR pos       AAA       GSE22093:AAA  42    10    23.809524
 
 
 # Note !!!!!
@@ -202,24 +172,8 @@ clin_neoadj_finneo %>%
 
 
 
-# 3. Interaction tests
+# 3.Explore chemo interaction (standard logistic and firth penalized logistic).
 # ==============================================================================
-
-# geo_inter <- vector(mode = "list", length = 4)
-# names(geo_inter) <- c("TN", "HER2", "HR", "ALL")
-
-
-# geo_inter <- vector(mode = "list", length = 2)
-# names(geo_inter) <- c("TN", "HR")
-#
-# geo_inter <- purrr::map(
-#   geo_inter,
-#   ~{
-#     x <- vector(mode = "list", length = 2)
-#     names(x) <- c("individual.sig", "pooled.sig")
-#     x
-#   }
-# )
 
 
 geo_inter <- vector(mode = "list", length = 2)
@@ -315,129 +269,10 @@ geo_inter$TN <- purrr::map(
         )
 
 
-        # # Estimate interaction and prognosis
-        # m0_inter <- glm(
-        #   # formula =as.formula(paste("Response ~", sig, "+ Arm_consolidated")),
-        #   formula =as.formula(paste("Response ~", sig, "+ Arm_consolidated + Series_matrix_accession")),
-        #   data = xclin,
-        #   family = "binomial"
-        # )
-        #
-        # m1_inter <- glm(
-        #   # formula =as.formula(paste("Response ~", sig, "* Arm_consolidated")),
-        #   formula =as.formula(paste("Response ~", sig, "* Arm_consolidated + Series_matrix_accession")),
-        #   data = xclin,
-        #   family = "binomial"
-        # )
-        #
-        # inter_var <- "Arm_consolidated"
-        #
-        # xinter <- summarise_interaction(m1 = m1_inter, m0 = m0_inter,
-        #                                 test_var = sig, inter_var = inter_var)
-        #
-        #
-        #
-        # # Estimate per arm and pooled data heterogenity
-        #
-        # inter_var_levels <- xinter %>%
-        #   dplyr::select(Module_name) %>%
-        #   dplyr::mutate(
-        #     Interaction_var_levels = str_split_fixed(string = Module_name, pattern = ":", n = 2)[, 2] %>%
-        #       str_replace(pattern = inter_var, "")
-        #   )
-        #
-        #
-        # # Update with per arm sample size and event/pcr rate to 'inter_var_levels'
-        # response_sum  <- xclin %>%
-        #   dplyr::group_by(Arm_consolidated) %>% # interaction variable
-        #   dplyr::summarise(N_response = which(Response == 1) %>% length(),
-        #                    N_patients = n(),
-        #                    Percent_repsonse = (N_response/N_patients) * 100 %>% round(digits = 2),
-        #                    .groups	= "keep")
-        #
-        # # adding row for All samples
-        # response_sum  <- bind_rows(
-        #   response_sum,
-        #   tibble(
-        #     Arm_consolidated = "",
-        #     N_response = response_sum$N_response %>% sum(),
-        #     N_patients = response_sum$N_patients %>% sum(),
-        #     Percent_repsonse = (N_response/N_patients) * 100
-        #   )
-        # )
-        #
-        # inter_var_levels <- inter_var_levels %>%
-        #   left_join(response_sum %>%
-        #               dplyr::rename(Interaction_var_levels = "Arm_consolidated"),
-        #             by = "Interaction_var_levels")
-        #
-        #
-        # # Heterogenity assessment
-        # xhet <- purrr::map_dfr(
-        #   inter_var_levels$Interaction_var_levels,
-        #   function(l, xclin, sig){
-        #
-        #     print(l)
-        #
-        #
-        #     if (l == "") {
-        #       # estmate heterogenity for the pooled dataset
-        #       estimate_prog_heterogenity(
-        #         xclin = xclin,
-        #         sig = sig
-        #       ) %>%
-        #         dplyr::mutate(
-        #           Interaction_var_levels = l
-        #         )
-        #     } else {
-        #       # estmate heterogenity per arm
-        #
-        #       # Note in HR+HER2+ after filtering out strata with <10  samples,
-        #       # only one dataset has TRA containing regime. Hence dataset heterogenity
-        #       # assesment can't be done for this regimen. This situation will be
-        #       # handled in estimate_prog_heterogenity()
-        #
-        #       estimate_prog_heterogenity(
-        #         xclin = xclin %>%
-        #           dplyr::filter(Arm_consolidated == l),
-        #         sig = sig
-        #       ) %>%
-        #         dplyr::mutate(
-        #           Interaction_var_levels = l
-        #         )
-        #     }
-        #
-        #   },
-        #   xclin,
-        #   sig
-        # )
-        #
-        # xhet <- xhet %>%
-        #   dplyr::select(-Module_name) %>%
-        #   left_join(inter_var_levels, by = "Interaction_var_levels")
-        #
-        #
-        #
-        # # Interaction + Heterogenity
-        # xinter <- xinter %>%
-        #   left_join(xhet, by = "Module_name")
-
       },
 
       xclin
     )
-
-
-    # # Consolidate per sig stat and format
-    # bind_rows(xx) %>%
-    #   dplyr::mutate(
-    #     P_inter_adj = p.adjust(
-    #       p = if_else(str_detect(Module_name, ":"), P, NA_real_),
-    #       method = "BH"),
-    #     P_prog_adj = p.adjust(
-    #       p = if_else(str_detect(Module_name, ":"), NA_real_, P),
-    #       method = "BH")
-    #   )
 
     xx %>% bind_rows()
 
@@ -541,123 +376,12 @@ geo_inter$HR <- purrr::map(
           xdata = xclin
         )
 
-        # # Estimate interaction and prognosis
-        # m0_inter <- glm(
-        #   # formula =as.formula(paste("Response ~", sig, "+ Arm_consolidated")),
-        #   formula =as.formula(paste("Response ~", sig, "+ Arm_consolidated + Series_matrix_accession")),
-        #   data = xclin,
-        #   family = "binomial"
-        # )
-        #
-        # m1_inter <- glm(
-        #   # formula =as.formula(paste("Response ~", sig, "* Arm_consolidated")),
-        #   formula =as.formula(paste("Response ~", sig, "* Arm_consolidated + Series_matrix_accession")),
-        #   data = xclin,
-        #   family = "binomial"
-        # )
-        #
-        # inter_var <- "Arm_consolidated"
-        #
-        # xinter <- summarise_interaction(m1 = m1_inter, m0 = m0_inter,
-        #                                 test_var = sig, inter_var = inter_var)
-        #
-        #
-        #
-        #
-        #
-        # # Estimate per arm and pooled data heterogenity
-        #
-        # inter_var_levels <- xinter %>%
-        #   dplyr::select(Module_name) %>%
-        #   dplyr::mutate(
-        #     Interaction_var_levels = str_split_fixed(string = Module_name, pattern = ":", n = 2)[, 2] %>%
-        #       str_replace(pattern = inter_var, "")
-        #   )
-        #
-        #
-        # # Update with per arm sample size and event/pcr rate to 'inter_var_levels'
-        # response_sum  <- xclin %>%
-        #   dplyr::group_by(Arm_consolidated) %>% # interaction variable
-        #   dplyr::summarise(N_response = which(Response == 1) %>% length(),
-        #                    N_patients = n(),
-        #                    Percent_repsonse = (N_response/N_patients) * 100 %>% round(digits = 2),
-        #                    .groups	= "keep")
-        #
-        # # adding row for All samples
-        # response_sum  <- bind_rows(
-        #   response_sum,
-        #   tibble(
-        #     Arm_consolidated = "",
-        #     N_response = response_sum$N_response %>% sum(),
-        #     N_patients = response_sum$N_patients %>% sum(),
-        #     Percent_repsonse = (N_response/N_patients) * 100
-        #   )
-        # )
-        #
-        # inter_var_levels <- inter_var_levels %>%
-        #   left_join(response_sum %>%
-        #               dplyr::rename(Interaction_var_levels = "Arm_consolidated"),
-        #             by = "Interaction_var_levels")
-        #
-        # # Heterogenity assessment
-        # xhet <- purrr::map_dfr(
-        #   inter_var_levels$Interaction_var_levels,
-        #   function(l, xclin, sig){
-        #     print(l)
-        #
-        #     if (l == "") {
-        #       # estmate heterogenity for the pooled dataset
-        #       estimate_prog_heterogenity(
-        #         xclin = xclin,
-        #         sig = sig
-        #       ) %>%
-        #         dplyr::mutate(
-        #           Interaction_var_levels = l
-        #         )
-        #     } else {
-        #       # estmate heterogenity per arm
-        #       estimate_prog_heterogenity(
-        #         xclin = xclin %>%
-        #           dplyr::filter(Arm_consolidated == l),
-        #         sig = sig
-        #       ) %>%
-        #         dplyr::mutate(
-        #           Interaction_var_levels = l
-        #         )
-        #     }
-        #
-        #   },
-        #   xclin,
-        #   sig
-        # )
-        #
-        # xhet <- xhet %>%
-        #   dplyr::select(-Module_name) %>%
-        #   left_join(inter_var_levels, by = "Interaction_var_levels")
-        #
-        #
-        #
-        # # Interaction + Heterogenity
-        # xinter <- xinter %>%
-        #   left_join(xhet, by = "Module_name")
-
 
       },
 
       xclin
     )
 
-
-    # # Consolidate per sig stat and format
-    # bind_rows(xx) %>%
-    #   dplyr::mutate(
-    #     P_inter_adj = p.adjust(
-    #       p = if_else(str_detect(Module_name, ":"), P, NA_real_),
-    #       method = "BH"),
-    #     P_prog_adj = p.adjust(
-    #       p = if_else(str_detect(Module_name, ":"), NA_real_, P),
-    #       method = "BH")
-    #   )
 
     xx %>% bind_rows()
 
@@ -709,7 +433,7 @@ p <- ggplot(ggdf, aes(x = variable, y = value, group = group_var)) +
        subtitle = "GEO interaction models") +
   facet_wrap(~subtype, ncol = 1)
 
-pdf(file = str_c(out_figures,"Firth_vs_Std_Logistic-GEO_Interaction.pdf"))
+pdf(file = str_c(out_figures,"GEO_Interaction_Firth_vs_Std_Logistic.pdf"))
 print(p)
 dev.off()
 
@@ -726,7 +450,7 @@ p <- ggplot(ggdf, aes(x = variable, y = log(value), group = group_var)) +
        subtitle = "GEO interaction models") +
   facet_wrap(~subtype, ncol = 1)
 
-pdf(file = str_c(out_figures,"Firth_vs_Std_Logistic-GEO_Interaction_log.pdf"))
+pdf(file = str_c(out_figures,"GEO_Interaction_log_Firth_vs_Std_Logistic.pdf"))
 print(p)
 dev.off()
 
@@ -735,3 +459,10 @@ dev.off()
 
 
 
+# Clear memory
+# ==============================================================================
+
+rm(clin_neoadj_finneo, geo_inter)
+
+#
+# ==============================================================================

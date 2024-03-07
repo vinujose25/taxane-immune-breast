@@ -5,18 +5,17 @@
 # >>>>>>>>>>>>>>>>>>>>>
 #
 # Generate TILsig from log2 TIL counts from TN, HER2 and TN+HER2
-# Compare TILsig from TN, HER2 and TN+HER2 w.r.t gene set, and GO BP enrichment
-# Decipher TILsig based on asociated biological processes !!! (Deciphering will
-# remove any genes accociated with confounding factors involved
+# Decipher TILsig based on its associated biological processes !!! (Deciphering will
+# remove any genes associated with confounding factors involved
 # in the TIL's semi quantitative measurement process) !!!!!
 
 
 
-# Script strucutre
+# Script structure
 # >>>>>>>>>>>>>>>>
 # 1. Load and format clinical data.
 # 2. Generate TILsig and compare TILsig based on geneset and enriched GO BP terms
-# 3. Decipher TILsig based on asociated biological processes
+# 3. Decipher TILsig based on associated biological processes
 # 4. Save Robjects
 
 
@@ -109,7 +108,7 @@ tilsig_clean <- purrr::map(
   ~(.x %>% dplyr::filter(P_adj<.01 & str_detect(Ncbi_gene_id2, "///", negate = T)))
 )
 
-# purrr::map(tilsig_clean,dim)
+purrr::map(tilsig_clean,dim)
 # $TN
 # [1] 484   8
 # $HER2
@@ -122,22 +121,13 @@ tilsig_clean <- purrr::map(
 # gene set agreement
 # >>>>>>>>>>>>>>>>>>
 
-sig_agreement <- function(x,y){
-  xx = x %>% inner_join(y %>% dplyr::select(Ncbi_gene_id1, Direction), by = "Ncbi_gene_id1")
-  gper = (nrow(xx)/nrow(x)) * 100
-  dper = ((purrr::map2_lgl(xx$Direction.x, xx$Direction.y,~(.x == .y)) %>% sum()) / nrow(xx)) * 100
-
-  str_c("% of x(n=", nrow(x),") in y(n=", nrow(y),"): ", round(gper), " (n=",nrow(xx),"); ",
-        "% common genes with same direction: ", round(dper))
-}
-
-sig_agreement(x = tilsig_clean$TN, y = tilsig_clean$ALL)
+tilsig_agreement(x = tilsig_clean$TN, y = tilsig_clean$ALL)
 # [1] "% of x(n=484) in y(n=994): 95 (n=460); % common genes with same direction: 100"
-sig_agreement(x = tilsig_clean$HER2, y = tilsig_clean$ALL)
+tilsig_agreement(x = tilsig_clean$HER2, y = tilsig_clean$ALL)
 # [1] "% of x(n=171) in y(n=994): 98 (n=168); % common genes with same direction: 100"
-sig_agreement(x = tilsig_clean$HER2, y = tilsig_clean$TN)
+tilsig_agreement(x = tilsig_clean$HER2, y = tilsig_clean$TN)
 # [1] "% of x(n=171) in y(n=484): 78 (n=134); % common genes with same direction: 100"
-sig_agreement(x = bind_rows(tilsig_clean$TN, tilsig_clean$HER2), y = tilsig_clean$ALL)
+tilsig_agreement(x = bind_rows(tilsig_clean$TN, tilsig_clean$HER2), y = tilsig_clean$ALL)
 # [1] "% of x(n=655) in y(n=994): 96 (n=628); % common genes with same direction: 100"
 
 # There is >78% agreement between different versions of TILsig.
@@ -147,30 +137,9 @@ sig_agreement(x = bind_rows(tilsig_clean$TN, tilsig_clean$HER2), y = tilsig_clea
 # biological agreement
 # >>>>>>>>>>>>>>>>>>>>
 
-print_sig <- function(x, label = "sig"){
-  up <- x %>% dplyr::filter(Direction == 1)
-  dn <- x %>% dplyr::filter(Direction == -1)
-  write.table(x = up %>% dplyr::select(Ncbi_gene_id2),
-              sep = "\t",
-              row.names = F,
-              col.names = F,
-              file = str_c("results/tables/",label,"_up.txt"))
-  write.table(x = dn %>% dplyr::select(Ncbi_gene_id2),
-              sep = "\t",
-              row.names = F,
-              col.names = F,
-              file = str_c("results/tables/",label,"_dn.txt"))
-  write.table(x = bind_rows(up,dn) %>% dplyr::select(Ncbi_gene_id2),
-              sep = "\t",
-              row.names = F,
-              col.names = F,
-              file = str_c("results/tables/",label,".txt"))
-}
-
-
-print_sig(x = tilsig_clean$TN, label = "tilsig_tn")
-print_sig(x = tilsig_clean$HER2, label = "tilsig_her2")
-print_sig(x = tilsig_clean$ALL, label = "tilsig_all")
+tilsig_print(x = tilsig_clean$TN, label = "tilsig_tn", path = out_data)
+tilsig_print(x = tilsig_clean$HER2, label = "tilsig_her2", path = out_data)
+tilsig_print(x = tilsig_clean$ALL, label = "tilsig_all", path = out_data)
 
 
 # background for david analysis
@@ -183,16 +152,16 @@ write.table(x = x,
             sep = "\t",
             row.names = F,
             col.names = T,
-            file = str_c("results/tables/tilsig_background_genes.txt"))
+            file = str_c(out_data, "tilsig_background_genes_for_overrepresentation_analysis.txt"))
 
 
-# load david results
-x <- list.files("results/tables/david_results/")
+# load DAVID results
+x <- list.files("results/data/tilsig_david_results/")
 david <- vector(mode = "list", length = length(x))
 names(david) = x
 
 for(i in names(david)){
-  david[[i]] <- read_delim(file = str_c("results/tables/david_results/", i),delim = "\t")
+  david[[i]] <- read_delim(file = str_c("results/data/tilsig_david_results/", i),delim = "\t")
 }
 names(david) <- str_replace(names(david),"\\.txt","") %>%
   str_replace("dn","down") %>%
@@ -233,16 +202,16 @@ x[["TN+HER2"]] <- bind_cols(david_clean[str_detect(names(david_clean), "ALL")])
 x[["TN"]] <- bind_cols(david_clean[str_detect(names(david_clean), "TN")])
 x[["HER2"]] <- bind_cols(david_clean[str_detect(names(david_clean), "HER2")])
 
-write_xlsx(x,path = "results/tables/david_results_fdr.05.xlsx")
+write_xlsx(x,path = str_c(out_data, "tilsig_david_results_fdr.05.xlsx"))
 
-# Similar bioloical proceses across up and down regulated gene independently
+# Similar biological process across up and down regulated gene independently
 
 #
 # ==============================================================================
 
 
 
-# 3. Decipher TILsig based on asociated biological processes
+# 3. Decipher TILsig based on associated biological processes
 # ==============================================================================
 
 # common enriched terms in up geneset in all versions of tilsig
@@ -329,7 +298,7 @@ purrr::map_df(up_terms, function(nme,up_sig){
 # 7 GO:0050776~regulation of immune response all:15, her2:11, tn:11                1              1
 # 8 GO:0060333~interferon-gamma-mediated sig all:14, her2:8, tn:10                 1              1
 
-# ALL version of siglist contins all genes fropm her2 and tn
+# ALL version of siglist contains all genes from her2 and tn
 # Hence consider siglist from ALL version
 
 
@@ -351,10 +320,10 @@ purrr::map_df(dn_terms, function(nme,dn_sig){
 
 # TILsig_bp gene agreement summary
 #
-# ALL version of siglist contins all genes fropm her2 and tn (one gene from tn is not present)
+# ALL version of siglist contains all genes from her2 and tn (one gene from tn is not present)
 # Hence consider siglist from ALL version
 
-# Further, due to similarity in genesets and biological signals betwern different
+# Further, due to similarity in genesets and biological signals between different
 # versions of TILsigup/TILsig_dn (from TN, HER2, TN+HER2),
 # use TILsig generated from TN+HER2 samples for downstream analysis.
 
@@ -389,221 +358,13 @@ tilsig_bp_legend <- tibble(
 if(identical(names(tilsig_bp), tilsig_bp_legend$Term)){
   names(tilsig_bp) <- tilsig_bp_legend$Signame
 }
-# names(tilsig_bp)
+names(tilsig_bp)
 # [1] "APP"           "Immune"        "Immune_reg."   "Fc_epsilon"
 # [5] "IFN_gamma"     "Immune_innate" "Complement1"   "Complement2"
 # [9] "ECM"           "Adhesion"
 
 
-
-
 # ### added on 22 mar 2022
-
-
-
-# tilsig_bp geneset agreement and co-correlation plots
-# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-# # Functions
-#
-# module_gene_overlap <- function(
-#
-#   lst # list of modules for which gene overlap is to be measured
-#
-#   ){
-#
-#   # lst = tilsig_bp
-#
-#   # Overlap data frame
-#   odf <- matrix(data = NA, nrow = length(lst), ncol = length(lst)) %>%
-#     as.data.frame()
-#   rownames(odf) = names(lst)
-#   colnames(odf) = names(lst)
-#
-#   for(irow in names(lst)){
-#     for(icol in names(lst)){
-#       odf[irow, icol] =
-#         (intersect(lst[[irow]]$Ncbi_gene_id, lst[[icol]]$Ncbi_gene_id) %>% length()) /
-#         (nrow(lst[[irow]]))
-#       # odf[irow, icol] contains proportion of "irow" sig genes present in "icol" sig
-#     }
-#   }
-#
-#   odf <- odf %>%
-#     tibble::as_tibble(rownames = "Module_name") %>%
-#     dplyr::mutate(Module_name2 = str_c(names(lst)," (",purrr::map_int(lst, nrow),")") ) %>%
-#     dplyr::select(c(Module_name, Module_name2), !c(Module_name, Module_name2))
-#
-#   return(odf)
-#
-#   # odf interpretation:
-#   # each row contains proportion of row signature genes present in column signature
-# }
-#
-#
-# module_gene_overlap_plot <- function(
-#
-#   module_overlap, # output from module_gene_overlap()
-#   overlap_col,    # char vector of heatmap color in the order of low, mid, high
-#   module_label,   # alternative names to use in axis annotation
-#   module_group,   # char vector of module group name, preserve module order as of module_overlap df
-#   module_group_col, # char vector of module group color, preserve order
-#   module_group_vline = NULL, # xintercept for vlines to group heatmap
-#   module_group_hline = NULL, # yintercept for hlines to group heatmap
-#   line_col = "gray30",
-#   ticksize.x = 5,
-#   ticksize.y = 4.5,
-#   angle = 45, # x axis angle
-#   plotarea_text_size = 2
-#
-# ){
-#
-#   # module_overlap = module_overlap
-#   # overlap_col = c(low = "gold", mid = "white", high = "blue")
-#   # module_label = module_annot$Module_name2
-#   # module_group = module_annot$Module_group
-#   # module_group_col = module_annot$Module_group_col
-#   # module_group_vline = c(0.5, 8.5,10.5)
-#   # module_group_hline = c(0.5, 8.5,10.5)
-#   # line_col = "gray30"
-#   # ticksize.x = 5
-#   # ticksize.y = 4.5
-#   # angle = 45
-#   # plotarea_text_size = 2
-#
-#
-#   if(!identical(module_overlap$Module_name2, module_label)){
-#     stop("module_label and module_overlap order not identical.")
-#   }
-#
-#
-#   ggdf <- module_overlap %>%
-#     tidyr::gather(key = "Column", value = "Proportion", -Module_name, -Module_name2) %>%
-#     dplyr::rename(Row = "Module_name") %>%
-#     dplyr::mutate(Proportion = round(Proportion, digits = 1),
-#                   Row = factor(Row, levels = unique(Row)),
-#                   Column = factor(Column, levels = levels(Row)))
-#
-#
-#   p <- ggplot(data = ggdf, aes(x = Column, y = Row)) +
-#     geom_raster(aes(fill = Proportion)) +
-#     scale_fill_gradient2(low = overlap_col[1],
-#                          mid = overlap_col[2],
-#                          high = overlap_col[3],
-#                          midpoint = 0.5)+
-#     geom_text(aes(label = Proportion), size = plotarea_text_size) +
-#     # Hack to include module group names
-#     geom_text(data = tibble(Module_group = module_group),
-#               aes(x = Inf, y = Inf, label = "", color = Module_group))+
-#     scale_color_manual(values = unique(module_group_col),
-#                        labels = unique(module_group))+
-#     scale_x_discrete(expand = c(0, 0), labels = unique(ggdf$Module_name2)) + # expand() remove extra space
-#     scale_y_discrete(expand = c(0, 0), labels = unique(ggdf$Module_name2)) + # expand() remove extra space
-#     # End hack
-#     guides(fill = guide_colorbar(title.position = "top"),
-#            color = ggh4x::guide_stringlegend(title.position = "top",
-#                                       nrow = 4,
-#                                       face = "bold")) +
-#     theme(axis.text.x.bottom = element_text(angle = angle, hjust = 1, vjust = 1),
-#           legend.position = "bottom",
-#           axis.text = element_text(colour = module_group_col),
-#           axis.ticks = element_line(colour = module_group_col),
-#           axis.ticks.x = element_line(size = ticksize.x),
-#           axis.ticks.y = element_line(size = ticksize.y)) +
-#     labs(x = "Reference modules", y = "Test modules",
-#          title = "Proportion of test modules present in reference module") +
-#
-#     geom_hline(yintercept = module_group_hline, color = line_col) +
-#     geom_vline(xintercept = module_group_vline, color = line_col)
-#
-#   return(p)
-# }
-#
-#
-#
-# module_correlation_plot <- function(
-#   module_score = score, # module score output from get_module_score_2()
-#   score_col = c(low = "darkgoldenrod", mid = "white", high = "darkcyan"),
-#   module_group = module_annot$Module_group, # char vector of module group name, preserve module order as of module score df
-#   module_group_col = module_annot$Module_group_col, # char vector of module group color, preserve order
-#   module_group_vline = c(0.5, 8.5,10.5), # xintercept for vlines to group heatmap
-#   module_group_hline = c(0.5, 8.5,10.5), # yintercept for hlines to group heatmap
-#   line_col = "gray30",
-#   ticksize.x = 5,
-#   ticksize.y = 4.5,
-#   angle = 45, # x axis angle
-#   plotarea_text_size = 2
-# ){
-#
-#   # module_score = score
-#   # score_col = c(low = "darkgoldenrod", mid = "white", high = "darkcyan")
-#   # module_group = module_annot$Module_group
-#   # module_group_col = module_annot$Module_group_col
-#   # module_group_vline = c(0.5, 8.5,10.5)
-#   # module_group_hline = c(0.5, 8.5,10.5)
-#   # line_col = "gray30"
-#   # ticksize.x = 5
-#   # ticksize.y = 4.5
-#   # angle = 45
-#   # plotarea_text_size = 2
-#
-#
-#
-#   # Co-correlaion
-#   ggdf <- module_score %>%
-#     dplyr::select(-1) %>%
-#     cor(method = "pearson") %>%
-#     as_tibble(rownames = "Row") %>%
-#     tidyr::gather(key = "Column", value = "Pearson", -1) %>%
-#     dplyr::mutate(Pearson = round(Pearson, digits = 1),
-#                   Row = factor(Row, levels = unique(Row)),
-#                   Column = factor(Column, levels = levels(Row)))
-#
-#
-#   p <- ggplot(data = ggdf, aes(x = Column, y = Row)) +
-#     geom_raster(aes(fill = Pearson)) +
-#     scale_fill_gradient2(low = score_col[1],
-#                          mid = score_col[2],
-#                          high = score_col[3],
-#                          midpoint = 0,
-#                          limits = c(-1,1))+
-#     geom_text(aes(label = Pearson), size = plotarea_text_size) +
-#
-#     scale_x_discrete(expand = c(0,0))+
-#     scale_y_discrete(expand = c(0,0))+
-#
-#     # ! Hack to set legend for module class
-#     geom_text(data = tibble(Module_group = module_group),
-#               aes(x = Inf, y= -Inf, label = "", color = Module_group)) +
-#     scale_color_manual(values = unique(module_group_col),
-#                        labels = unique(module_group)) +
-#     # ! end hack
-#
-#     guides(fill = guide_colorbar(title.position = "top"),
-#            color = guide_stringlegend(title = "Module group",
-#                                       face = "bold",
-#                                       nrow = 4,
-#                                       title.position = "top") ) +
-#
-#     theme(axis.text.x.bottom = element_text(angle = angle, hjust = 1, vjust = 1),
-#           legend.position = "bottom",
-#           axis.text = element_text(colour = module_group_col),
-#           axis.ticks = element_line(colour = module_group_col),
-#           axis.ticks.x = element_line(size = ticksize.x),
-#           axis.ticks.y = element_line(size = ticksize.y),
-#           panel.grid = element_blank()) + #axis.title = element_blank()
-#     labs(x = "Gene modules", y = "Gene modules",
-#          title = "Pearson correlation between gene modules") +
-#
-#
-#     geom_hline(yintercept = module_group_hline, color = line_col) +
-#     geom_vline(xintercept = module_group_vline, color = line_col)
-#
-#
-#   return(p)
-#
-# }
-
 
 
 # tilsig_bp geneset agreement plot
@@ -697,31 +458,31 @@ print(
 dev.off()
 
 
-# write_down tilsig_bp gene modules
-
-write_xlsx(
-  x = tilsig_bp %>%
-    purrr::map(
-      ~(.x %>%
-          dplyr::mutate(
-            Ncbi_gene_id = str_replace(
-              string = Ncbi_gene_id,
-              pattern = "ncbi_",
-              replacement = ""
-            )
-          )
-      )
-    ),
-  path = "results/tables/tilsig_bp_modules.xlsx"
-)
+# # write_down tilsig_bp gene modules
+#
+# write_xlsx(
+#   x = tilsig_bp %>%
+#     purrr::map(
+#       ~(.x %>%
+#           dplyr::mutate(
+#             Ncbi_gene_id = str_replace(
+#               string = Ncbi_gene_id,
+#               pattern = "ncbi_",
+#               replacement = ""
+#             )
+#           )
+#       )
+#     ),
+#   path = str_c(out_data, "tilsig_bp_modules.xlsx")
+# )
 
 
 
 # Summary: tilsig_bp geneset agreement and co-correlation plots
 # The up regulated BPs were all related to immune signalling and are highly correlated
 # - with low to high overlap in genes.
-# Similar effect is oberved with down regulated BPs, all related to ECM and cell adhision to ECM.
-# Hence all upregulated/downregulated BP genesets were pooled independently.
+# Similar effect is observed with down regulated BPs, all related to ECM and cell adhesion to ECM.
+# Hence all unregulated/down regulated BP genesets were pooled independently.
 
 
 # Merge up/down regulated gene sets independently
@@ -745,106 +506,8 @@ purrr::map(tilsig_bp_merged,nrow) %>% unlist()
 # Immune    ECM
 # 71     78
 
-
-
 # ### end edit on 22 mar 2022
 
-
-# Commented on 22 mar 2022
-# The below code become obsolete, as in the previous code its is decided to pool
-# all upreguled/downregulated BP genesets togother independetly.
-# !!!!!! Note that the R object "tilsig_bp_merged" now contains TILsig, Immune and ECM signatures
-
-#
-# # tilsig_bp gene agrremnt martix
-# # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-#
-# x <- matrix(data=NA, ncol = length(tilsig_bp), nrow = length(tilsig_bp))
-# colnames(x) <- names(tilsig_bp)
-# rownames(x) <- names(tilsig_bp)
-# for(row in rownames(x)){
-#   for(col in colnames(x)){
-#   x[row, col] = sum(tilsig_bp[[row]]$Ncbi_gene_id %in% tilsig_bp[[col]]$Ncbi_gene_id) / nrow(tilsig_bp[[row]])
-#   x[row, col] = round(x[row, col], digits = 2)
-#   }
-# }
-# x
-# #               APP Immune Immune_reg. Fc_epsilon IFN_gamma Immune_innate Complement1 Complement2  ECM Adhesion
-# # APP           1.00   0.23        0.23       0.68      0.23          0.23        0.00        0.00 0.00      0.0
-# # Immune        0.17   1.00        0.31       0.14      0.28          0.17        0.17        0.17 0.00      0.0
-# # Immune_reg.   0.33   0.60        1.00       0.27      0.53          0.27        0.27        0.27 0.00      0.0
-# # Fc_epsilon    0.71   0.19        0.19       1.00      0.00          0.10        0.19        0.19 0.00      0.0
-# # IFN_gamma     0.36   0.57        0.57       0.00      1.00          0.21        0.00        0.00 0.00      0.0
-# # Immune_innate 0.23   0.23        0.18       0.09      0.14          1.00        0.27        0.23 0.00      0.0
-# # Complement1   0.00   0.56        0.44       0.44      0.00          0.67        1.00        0.89 0.00      0.0
-# # Complement2   0.00   0.62        0.50       0.50      0.00          0.62        1.00        1.00 0.00      0.0
-# # ECM           0.00   0.00        0.00       0.00      0.00          0.00        0.00        0.00 1.00      0.4
-# # Adhesion      0.00   0.00        0.00       0.00      0.00          0.00        0.00        0.00 0.38      1.0
-#
-# purrr::map(tilsig_bp, nrow) %>% unlist()
-# # APP        Immune   Immune_reg.    Fc_epsilon
-# # 22            29            15            21
-# # IFN_gamma Immune_innate   Complement1   Complement2
-# # 14            22             9             8
-# # ECM      Adhesion
-# # 47            50
-#
-#
-# # Merge genesets with > 60% agreement
-# # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-#
-# # APP-Fc # Fc receptor binding process part of APP, https://www.frontiersin.org/articles/10.3389/fimmu.2020.01393/full , https://pubmed.ncbi.nlm.nih.gov/10631953/ , https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4145246/
-# # Imm-Imm.reg
-# # IFN-gamma
-# # Innate-Complement1-2 # complement part of innate, https://pubmed.ncbi.nlm.nih.gov/16234578/
-# # ECM
-# # Adhesion
-#
-# tilsig_bp_merged <- list(
-#   APP_Fc = bind_rows(tilsig_bp[c("APP","Fc_epsilon")]),
-#   Immune = bind_rows(tilsig_bp[c("Immune", "Immune_reg.")]),
-#   IFN_gamma = tilsig_bp$IFN_gamma,
-#   Innate = bind_rows(tilsig_bp[c("Immune_innate", "Complement1", "Complement2")]),
-#   ECM = tilsig_bp$ECM,
-#   Adhesion = tilsig_bp$Adhesion
-# )
-# purrr::map(tilsig_bp_merged,nrow) %>% unlist()
-# # APP_Fc    Immune IFN_gamma    Innate       ECM  Adhesion
-# # 43        44        14        39        47        50
-#
-#
-# tilsig_bp_merged <- purrr::map(tilsig_bp_merged,~(.x %>% dplyr::distinct(Ncbi_gene_id)))
-# purrr::map(tilsig_bp_merged,nrow) %>% unlist()
-# # APP_Fc    Immune IFN_gamma    Innate       ECM  Adhesion
-# # 28        35        14        25        47        50
-#
-#
-#
-# # tilsig_bp_merged gene agrremnt martix
-# # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-#
-# x <- matrix(data=NA, ncol = length(tilsig_bp_merged), nrow = length(tilsig_bp_merged))
-# colnames(x) <- names(tilsig_bp_merged)
-# rownames(x) <- names(tilsig_bp_merged)
-# for(row in rownames(x)){
-#   for(col in colnames(x)){
-#     x[row, col] = sum(tilsig_bp_merged[[row]]$Ncbi_gene_id %in% tilsig_bp_merged[[col]]$Ncbi_gene_id) / nrow(tilsig_bp_merged[[row]])
-#     x[row, col] = round(x[row, col], digits = 2)
-#   }
-# }
-# x
-# #           APP_Fc Immune IFN_gamma Innate  ECM Adhesion
-# # APP_Fc      1.00   0.32      0.18   0.36 0.00      0.0
-# # Immune      0.26   1.00      0.31   0.23 0.00      0.0
-# # IFN_gamma   0.36   0.79      1.00   0.21 0.00      0.0
-# # Innate      0.40   0.32      0.12   1.00 0.00      0.0
-# # ECM         0.00   0.00      0.00   0.00 1.00      0.4
-# # Adhesion    0.00   0.00      0.00   0.00 0.38      1.0
-#
-#
-# purrr::map(tilsig_bp_merged, nrow) %>% unlist()
-# # APP_Fc    Immune IFN_gamma    Innate    ECM  Adhesion
-# # 28        35        14        25        47        50
 
 
 #
@@ -852,16 +515,27 @@ purrr::map(tilsig_bp_merged,nrow) %>% unlist()
 
 
 
-# 3. Save Robjects
+# 4. Save Robjects
 # ==============================================================================
 
 save(tilsig, file = str_c(out_data,"tilsig.RData")) # Original TILsig no filtering
 save(tilsig_clean, file = str_c(out_data,"tilsig_clean.RData")) # P_adj<.01
-save(tilsig_bp, file = "results/data/tilsig_bp.RData")
-save(tilsig_bp_merged, file = "results/data/tilsig_bp_merged.RData")
+save(tilsig_bp, file = str_c(out_data, "tilsig_bp.RData"))
+save(tilsig_bp_merged, file = str_c(out_data, "tilsig_bp_merged.RData"))
 
 #
 # ==============================================================================
 
 
+# Clear memory
+# ==============================================================================
 
+rm(clin_finher, expr_finher,
+   tilsig, tilsig_clean,
+   david, david_clean,
+   up_sig,up_terms,
+   dn_sig, dn_terms,
+   tilsig_bp, tilsig_bp_merged, tilsig_bp_legend)
+
+#
+# ==============================================================================

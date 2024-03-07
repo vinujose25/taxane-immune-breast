@@ -1,17 +1,16 @@
-# finher_tn.R
+# s6.1_finher_tn.R
 
 
 # What the script does?
 # >>>>>>>>>>>>>>>>>>>>>
 #
 # Prognostic an Chemo interaction with TIL, TIL associated signatures and Immune celltypes.
-# Account for arm heterogenity.
+# Account for arm heterogeneity.
 # Prepare data for plotting.
 # Generate sample plot for TN
 
 
-
-# Script strucutre
+# Script structure
 # >>>>>>>>>>>>>>>>
 # 1. Load and format clinical data.
 # 2. Explore prognosis and chemo interaction in TN.
@@ -24,7 +23,6 @@
 # ==============================================================================
 
 load("results/data/clin_finher_finneo.RData")
-# load("results/data/clin_finher.RData")
 
 
 # Format clinical data
@@ -32,7 +30,7 @@ load("results/data/clin_finher_finneo.RData")
 
 clin_finher_finneo <- clin_finher_finneo %>%
   dplyr::mutate(Arm = interaction(Chemo, Herceptin, Hormone),
-                TIL = StrLy_Mean/10) %>%
+                TIL = StrLy_Mean/10) %>% # in units of 10% increments
   dplyr::filter(Subtype_IHC == "TN")
 
 
@@ -70,7 +68,7 @@ clin_finher_finneo %>%
 
 
 # Analysis
-# 1. Sig's prognostic value in TN (with arm heterogenity (DTX/NVB interaction))
+# 1. Sig's prognostic value in TN (with arm heterogeneity (DTX/NVB interaction))
 # 2. Sig's interaction with chemo in TN
 
 # Note: By definition, prognosis is the natural course of disease independent of
@@ -447,102 +445,111 @@ names(finher_tn[["inter.chemo_pooled.sig"]]) <- c("RFS", "DDFS", "OS")
 
 
 
-
-# 3. Analysis summary
-# ==============================================================================
-
-summarize_tn <- function(x, prog = F){
-  # xx <- finher_tn$prog$DDFS
-  # prog = T
-
-  xx <- x
-
-  if(prog){
-
-    nme <- c("Variable", "HR", "Low95","Up95", "P", "P_adj", "Heterogeneity", "Ph_ok")
-    xx <- xx$main_effect[ , nme] %>%
-      dplyr::mutate( HR = str_c(round(HR, digits = 2),
-                                " (",
-                                round(Low95,digits=2), "-",
-                                round(Up95,digits=2),
-                                ")"),
-                     # Note, for prognostic model the CI is in HR
-                     Heterogeneity = str_c(round(Heterogeneity, digits=2))) %>%
-      dplyr::rename(Het = "Heterogeneity")
-
-  } else {
-
-    nme <- c("Variable", "HR", "Low95","Up95", "P", "P_adj", "Ph_ok")
-    xx <- xx$main_effect[ , nme] %>%
-      dplyr::mutate( HR = str_c(round(HR, digits = 2),
-                                " (",
-                                round(exp(Low95),digits=2), "-",
-                                round(exp(Up95),digits=2),
-                                ")"))
-    # Note, for interaction model the CI is in coef
-
-  }
-
-  xx <- xx %>%
-    dplyr::mutate(
-      P = str_c(round(P, digits=2)),
-      P_adj = str_c(round(P_adj, digits=2))
-    ) %>%
-    dplyr::select(-c(Low95,Up95))
-
-
-  return(xx)
-
-}
-
-xout <- list()
-
-xout[["ddfs"]] <- summarize_tn(x = finher_tn$prog_individual.sig$DDFS, prog = T)
-xout[["os"]] <- summarize_tn(x = finher_tn$prog_individual.sig$OS, prog = T)
-xout[["rfs"]] <- summarize_tn(x = finher_tn$prog_individual.sig$RFS, prog = T)
-
-write_xlsx(xout, path = str_c(out_tables,"finher_tn_prognosis_individual.sig_summary.xlsx"))
-
-
-
-xout <- list()
-
-xout[["ddfs"]] <- summarize_tn(x = finher_tn$prog_pooled.sig$DDFS, prog = T)
-xout[["os"]] <- summarize_tn(x = finher_tn$prog_pooled.sig$OS, prog = T)
-xout[["rfs"]] <- summarize_tn(x = finher_tn$prog_pooled.sig$RFS, prog = T)
-
-write_xlsx(xout, path = str_c(out_tables,"finher_tn_prognosis_pooled.sig_summary.xlsx"))
-
-
-
-xout <- list()
-
-xout[["ddfs"]] <-  summarize_tn(x = finher_tn$inter.chemo_individual.sig$DDFS, prog = F)
-xout[["os"]] <- summarize_tn(x = finher_tn$inter.chemo_individual.sig$OS, prog = F)
-xout[["rfs"]] <- summarize_tn(x = finher_tn$inter.chemo_individual.sig$RFS, prog = F)
-
-write_xlsx(xout, path = str_c(out_tables,"finher_tn_chemo_interaction_individual.sig_summary.xlsx"))
-
-
-xout <- list()
-
-xout[["ddfs"]] <-  summarize_tn(x = finher_tn$inter.chemo_pooled.sig$DDFS, prog = F)
-xout[["os"]] <- summarize_tn(x = finher_tn$inter.chemo_pooled.sig$OS, prog = F)
-xout[["rfs"]] <- summarize_tn(x = finher_tn$inter.chemo_pooled.sig$RFS, prog = F)
-
-write_xlsx(xout, path = str_c(out_tables,"finher_tn_chemo_interaction_pooled.sig_summary.xlsx"))
-
-
 #
-# ==============================================================================
-
+# # 3. Analysis summary
+# # ==============================================================================
+#
+# summarize_tn <- function(x, prog = F){
+#   # xx <- finher_tn$prog$DDFS
+#   # prog = T
+#
+#   xx <- x
+#
+#   if(prog){
+#
+#     nme <- c("Variable", "HR", "Low95","Up95", "P", "P_adj", "Heterogeneity", "Ph_ok")
+#     xx <- xx$main_effect[ , nme] %>%
+#       dplyr::mutate( HR = str_c(round(HR, digits = 2),
+#                                 " (",
+#                                 round(Low95,digits=2), "-",
+#                                 round(Up95,digits=2),
+#                                 ")"),
+#                      # Note, for prognostic model the CI is in HR
+#                      Heterogeneity = str_c(round(Heterogeneity, digits=2))) %>%
+#       dplyr::rename(Het = "Heterogeneity")
+#
+#   } else {
+#
+#     nme <- c("Variable", "HR", "Low95","Up95", "P", "P_adj", "Ph_ok")
+#     xx <- xx$main_effect[ , nme] %>%
+#       dplyr::mutate( HR = str_c(round(HR, digits = 2),
+#                                 " (",
+#                                 round(exp(Low95),digits=2), "-",
+#                                 round(exp(Up95),digits=2),
+#                                 ")"))
+#     # Note, for interaction model the CI is in coef
+#
+#   }
+#
+#   xx <- xx %>%
+#     dplyr::mutate(
+#       P = str_c(round(P, digits=2)),
+#       P_adj = str_c(round(P_adj, digits=2))
+#     ) %>%
+#     dplyr::select(-c(Low95,Up95))
+#
+#
+#   return(xx)
+#
+# }
+#
+# xout <- list()
+#
+# xout[["ddfs"]] <- summarize_tn(x = finher_tn$prog_individual.sig$DDFS, prog = T)
+# xout[["os"]] <- summarize_tn(x = finher_tn$prog_individual.sig$OS, prog = T)
+# xout[["rfs"]] <- summarize_tn(x = finher_tn$prog_individual.sig$RFS, prog = T)
+#
+# write_xlsx(xout, path = str_c(out_tables,"finher_tn_prognosis_individual.sig_summary.xlsx"))
+#
+#
+#
+# xout <- list()
+#
+# xout[["ddfs"]] <- summarize_tn(x = finher_tn$prog_pooled.sig$DDFS, prog = T)
+# xout[["os"]] <- summarize_tn(x = finher_tn$prog_pooled.sig$OS, prog = T)
+# xout[["rfs"]] <- summarize_tn(x = finher_tn$prog_pooled.sig$RFS, prog = T)
+#
+# write_xlsx(xout, path = str_c(out_tables,"finher_tn_prognosis_pooled.sig_summary.xlsx"))
+#
+#
+#
+# xout <- list()
+#
+# xout[["ddfs"]] <-  summarize_tn(x = finher_tn$inter.chemo_individual.sig$DDFS, prog = F)
+# xout[["os"]] <- summarize_tn(x = finher_tn$inter.chemo_individual.sig$OS, prog = F)
+# xout[["rfs"]] <- summarize_tn(x = finher_tn$inter.chemo_individual.sig$RFS, prog = F)
+#
+# write_xlsx(xout, path = str_c(out_tables,"finher_tn_chemo_interaction_individual.sig_summary.xlsx"))
+#
+#
+# xout <- list()
+#
+# xout[["ddfs"]] <-  summarize_tn(x = finher_tn$inter.chemo_pooled.sig$DDFS, prog = F)
+# xout[["os"]] <- summarize_tn(x = finher_tn$inter.chemo_pooled.sig$OS, prog = F)
+# xout[["rfs"]] <- summarize_tn(x = finher_tn$inter.chemo_pooled.sig$RFS, prog = F)
+#
+# write_xlsx(xout, path = str_c(out_tables,"finher_tn_chemo_interaction_pooled.sig_summary.xlsx"))
+#
+#
+# #
+# # ==============================================================================
+#
 
 
 
 # 4. Save Robjects
 # ==============================================================================
 
-save(finher_tn, file = str_c(out_data,"finher_tn_v2.RData"))
+save(finher_tn, file = str_c(out_data,"finher_tn.RData"))
+
+#
+# ==============================================================================
+
+
+# Clear memory
+# ==============================================================================
+
+rm(clin_finher_finneo, finher_tn)
 
 #
 # ==============================================================================

@@ -1,28 +1,24 @@
-# s2_module_score_and_celltype_estimation.R
+# s5_module_score_and_celltype_estimation_v2.R
 
 # What the script does?
 # >>>>>>>>>>>>>>>>>>>>>
-# Clean gene-modules of biological processes and celltype (TIL-localization/
-# proliferation/MCPcounter gene modules).
-# Validate cleaned gene modules in expr_tcga/expr_metabric (MetaGxBreast).
 # Estimate module and celltype scores.
 
 
 
-# Script strucutre
+# Script structure
 # >>>>>>>>>>>>>>>>
-# 1. Load data (geo, finher, expr_tcga, expr_metabric)
-# 2. Load, clean, subset gene-modules.
-# 3. Module gene agreement testing and module pooling
-# 4. Gene-module validation in expr_tcga and expr_metabric.
-# 4. Compute module-scores and update clin_neoadj.
-# 5. Estimate celltype scores and update clin_neoadj.
-# 6. Additional formating of clinincal data to aid in analysis
+# 1. Load data (geo, finher)
+# 2. Load validated gene-modules.
+# 3. Compute module-scores.
+# 4. Estimate celltype scores and update score_finher/score_neoadj
+# 5. Module agreement(gene), correlation in finher and neoadj
+# 6. Additional formatting of clinical data to aid in analysis
 # 7. Save Robjects
 
 
 
-# 1. Load and prepare data (geo, finher, expr_tcga, expr_metabric)
+# 1. Load and prepare data (geo and finher)
 # ==============================================================================
 
 # clinical (to update module sore and celltype estimates)
@@ -33,16 +29,12 @@ load("results/data/clin_finher.RData")
 load("results/data/expr_neoadj.RData")
 load("results/data/expr_finher.RData")
 
-# # tcga/metabric from metagxbreast R-package
-# # Ref: inhouse project "expr_tcga-expr_metabric-metagxbreast" (https://osf.io/jb8za/)
-# load("data/tcga.RData")
-# load("data/metabric.RData")
+# To select validated MCPcounter sigs
+load("results/data/validation_finneo_stat.RData")
+load("results/data/validation_neo_stat.RData")
 
 dim(expr_neoadj) # 9184 1500
 dim(expr_finher) # 3350 301
-
-# dim(tcga$expr) # [1] 19405  1074
-# dim(metabric$expr) # [1] 24924  2115
 
 
 # Convert expression matrix to samples x genes (for module score algorithm)
@@ -52,8 +44,8 @@ expr_finher <- expr_finher %>% t_tibble(names_x_desc = "Sample_id")
 
 
 
-# Discard genes with atleast one NA expression values in any samples
-# (NAs will creat problems in module score algorithm)
+# Discard genes with at least one NA expression values in any samples
+# (NAs will create problems in module score algorithm)
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 expr_neoadj %>% purrr::map_lgl(~any(is.na(.x))) %>% table() # includes Non-NA Sample_id
@@ -73,7 +65,7 @@ expr_finher %>% purrr::map_lgl(~any(is.na(.x))) %>% table() # includes Non-NA Sa
 
 
 
-# 2. Load and, clean gene-modules.
+# 2. Load validated gene-modules.
 # ==============================================================================
 
 # tilsig versions
@@ -92,92 +84,90 @@ names(tilsig_list) <- str_c("De.novo_", names(tilsig_list))
 
 
 # Pub gene modules
-load("results/data/module_list_merged_finher.RData")
-load("results/data/module_list_merged_neoadj.RData")
-
-load("results/data/validation_finher_stat.RData")
-load("results/data/validation_neoadj_stat.RData")
+load("results/data/module_list_sizecor_selected_finneo.RData") # merged module prefix: "Pooled_"
+load("results/data/module_list_sizecor_selected_neo.RData") # merged module prefix: "Pooled_"
 
 
-# valid modules
-nme <- validation_finher_stat %>%
-  dplyr::filter(Valid_modules == TRUE) %>%
-  dplyr::select(Module_id) %>%
-  tibble::deframe()
-# explicit inclution of non-valid Brain as negative control
-module_list_merged_finher <- module_list_merged_finher[c(nme,
-                                                         "Tissue_Non.breast",
-                                                         "Human_Behaviour" )]
+# Update module_list_sizecor_selected_* with tilsig
+module_list_sizecor_selected_finneo <- c(tilsig_list %>% # filtering tilsig based on neoadj dataset genes
+                                           # to make tilsig identical in both finher and neoadj dataset
+                                           purrr::map(function(sig, genes){
+                                             sig %>%
+                                               dplyr::filter(Ncbi_gene_id %in% all_of(genes))
+                                           },
+                                           genes = names(expr_neoadj)[-1]
+                                           ),
+                                         module_list_sizecor_selected_finneo)
+
+module_list_sizecor_selected_neo <- c(tilsig_list %>% # filtering tilsig based on neoadj dataset genes
+                                        # to make tilsig identical in both finher and neoadj dataset
+                                        purrr::map(function(sig, genes){
+                                          sig %>%
+                                            dplyr::filter(Ncbi_gene_id %in% all_of(genes))
+                                        },
+                                        genes = names(expr_neoadj)[-1]
+                                        ),
+                                      module_list_sizecor_selected_neo)
 
 
 
-# valid modules
-nme <- validation_neoadj_stat %>%
-  dplyr::filter(Valid_modules == TRUE) %>%
-  dplyr::select(Module_id) %>%
-  tibble::deframe()
-module_list_merged_neoadj <- module_list_merged_neoadj[nme]
 
+# Order modules
+names(module_list_sizecor_selected_finneo)
+# [1] "De.novo_TILsig"         "De.novo_Immune"         "De.novo_ECM"
+# [4] "Gruosso2019_Interferon" "Hamy2016_Immune"        "Yang2018_Immune"
+# [7] "Farmer2009_MX1"         "Hamy2016_Interferon"    "Nirmal2018_Interferon"
+# [10] "Hamy2016_Ecm"           "Naba2014_Ecmcore"       "Triulzi2013_Ecm"
+# [13] "Sorrentino2014_Chol"    "Fibroblasts"            "Pooled_Immune"
+# [16] "Pooled_Interferon"     "Pooled_Fibrosis"            "Pooled_Cholesterol"
 
+module_list_sizecor_selected_finneo <- module_list_sizecor_selected_finneo[
+  c(
+    "De.novo_TILsig", "De.novo_Immune", "De.novo_ECM",
 
-module_list_finher <- c(tilsig_list,# no filtering as it is derived from finher dataset
-                        module_list_merged_finher)
+    "Hamy2016_Immune", "Yang2018_Immune",
 
-module_list_neoadj <- c(tilsig_list %>% # filtering tilsig based on neoadj dataset genes
-                          purrr::map(function(sig, genes){
-                            sig %>%
-                              dplyr::filter(Ncbi_gene_id %in% all_of(genes))
-                          },
-                          genes = names(expr_neoadj)[-1]
-                          ),
-                        module_list_merged_neoadj)
+    "Gruosso2019_Interferon", "Farmer2009_MX1", "Hamy2016_Interferon", "Nirmal2018_Interferon",
 
+    "Hamy2016_Ecm", "Naba2014_Ecmcore", "Triulzi2013_Ecm",
 
-# order modules
+    "Sorrentino2014_Chol",
 
-names(module_list_finher)
-# [1] "De.novo_TILsig"          "De.novo_Immune"          "De.novo_ECM"             "Gruosso2019_Immune"
-# [5] "Gruosso2019_Interferon"  "Gruosso2019_Cholesterol" "Gruosso2019_Fibrosis"    "General_Immune"
-# [9] "General_Interferon"      "General_ECM"             "General_Cholesterol"     "General_Proliferation"
-# [13] "Tcell"                   "Monocytic.Lineage"       "Fibroblasts"             "Tissue_Non.breast"
-# [17] "Human_Behaviour"
+    "Pooled_Immune", "Pooled_Interferon", "Pooled_Fibrosis", "Pooled_Cholesterol",
 
-module_list_finher <- module_list_finher[c(
-  "De.novo_TILsig", "De.novo_Immune", "De.novo_ECM",
-
-  "Gruosso2019_Immune", "Gruosso2019_Interferon",
-  "Gruosso2019_Cholesterol", "Gruosso2019_Fibrosis",
-
-  "General_Immune", "General_Interferon", "General_ECM", "General_Cholesterol",
-
-  "Tcell", "Monocytic.Lineage", "Fibroblasts",
-
-  "General_Proliferation", "Tissue_Non.breast", "Human_Behaviour"
-)
+    "Fibroblasts"
+  )
 ]
 
 
 
-names(module_list_neoadj)
-# [1] "De.novo_TILsig"          "De.novo_Immune"          "De.novo_ECM"             "Gruosso2019_Immune"
-# [5] "Gruosso2019_Interferon"  "Gruosso2019_Cholesterol" "Gruosso2019_Fibrosis"    "General_Immune"
-# [9] "General_Interferon"      "General_ECM"             "General_Cholesterol"     "General_Proliferation"
-# [13] "Tissue_Non.breast"       "Human_Behaviour"         "Tcell"                   "Cyto.Lymphocyte"
-# [17] "B.Lineage"               "NK.Cells"                "Monocytic.Lineage"       "Myeloid.Dendritic"
-# [21] "Neutrophils"             "Endothelial"             "Fibroblasts"
+names(module_list_sizecor_selected_neo)
+# [1] "De.novo_TILsig"          "De.novo_Immune"          "De.novo_ECM"
+# [4] "Gruosso2019_Immune"      "Gruosso2019_Interferon"  "Gruosso2019_Cholesterol"
+# [7] "Gruosso2019_Fibrosis"    "Hamy2016_Immune"         "Teschendorff2007_Immune"
+# [10] "Yang2018_Immune"         "Desmedt2008_STAT1"       "Farmer2009_MX1"
+# [13] "Hamy2016_Interferon"     "Nirmal2018_Interferon"   "Hamy2016_Ecm"
+# [16] "Naba2014_Ecmcore"        "Triulzi2013_Ecm"         "Ehmsen2019_Chol"
+# [19] "Simigdala2016_Chol"      "Sorrentino2014_Chol"     "Tcell"
+# [22] "B.Lineage"               "Monocytic.Lineage"       "Myeloid.Dendritic"
+# [25] "Endothelial"             "Fibroblasts"             "Pooled_Immune"
+# [28] "Pooled_Interferon"       "Pooled_Fibrosis"         "Pooled_Cholesterol"
 
-module_list_neoadj <- module_list_neoadj[c(
+module_list_sizecor_selected_neo <- module_list_sizecor_selected_neo[c(
   "De.novo_TILsig", "De.novo_Immune", "De.novo_ECM",
 
-  "Gruosso2019_Immune", "Gruosso2019_Interferon",
-  "Gruosso2019_Cholesterol", "Gruosso2019_Fibrosis",
+  "Gruosso2019_Immune", "Hamy2016_Immune", "Teschendorff2007_Immune", "Yang2018_Immune", "Desmedt2008_STAT1",
 
-  "General_Immune", "General_Interferon", "General_ECM", "General_Cholesterol",
+  "Gruosso2019_Interferon", "Farmer2009_MX1", "Hamy2016_Interferon", "Nirmal2018_Interferon",
 
-  "Tcell", "Cyto.Lymphocyte", "B.Lineage", "NK.Cells", "Monocytic.Lineage",
-  "Myeloid.Dendritic", "Neutrophils", "Endothelial", "Fibroblasts",
+  "Gruosso2019_Cholesterol", "Ehmsen2019_Chol", "Simigdala2016_Chol", "Sorrentino2014_Chol",
 
-  "General_Proliferation", "Tissue_Non.breast", "Human_Behaviour"
+  "Gruosso2019_Fibrosis", "Hamy2016_Ecm", "Naba2014_Ecmcore", "Triulzi2013_Ecm",
+
+  "Pooled_Immune", "Pooled_Interferon", "Pooled_Fibrosis", "Pooled_Cholesterol",
+
+  "Tcell", "B.Lineage", "Monocytic.Lineage",
+  "Myeloid.Dendritic", "Endothelial", "Fibroblasts"
 )]
 
 
@@ -192,19 +182,26 @@ module_list_neoadj <- module_list_neoadj[c(
 
 # Module-score
 
-score_finher <- get_module_score_2(
+# A: Main comparison
+score_finher_finneo <- get_module_score_2(
   x = expr_finher,
-  module_list = module_list_finher,
+  module_list = module_list_sizecor_selected_finneo,
   by = "Ncbi_gene_id"
 )
 
-score_neoadj <- get_module_score_2(
+# B: Main comparison
+score_neoadj_finneo <- get_module_score_2(
   x = expr_neoadj,
-  module_list = module_list_neoadj,
+  module_list = module_list_sizecor_selected_finneo,
   by = "Ncbi_gene_id"
 )
 
-
+# C: Supplementary
+score_neoadj_neo <- get_module_score_2(
+  x = expr_neoadj,
+  module_list = module_list_sizecor_selected_neo,
+  by = "Ncbi_gene_id"
+)
 
 #
 # ==============================================================================
@@ -263,7 +260,7 @@ names(score) <-  purrr::map_chr(
 
 
 # Filtering invalid MCPcounter estimates due missing marker genes
-nme <- validation_finher_stat %>%
+nme <- validation_finneo_stat %>%
   dplyr::filter(Valid_modules) %>%
   # "Becht_2016" and "MCPcounter" represents same modules.
   # Modules with "Becht_2016" keyword is computed as an average.
@@ -281,7 +278,7 @@ score <- score %>%
 
 
 # score_finher updation
-score_finher <- score_finher %>%
+score_finher_finneo <- score_finher_finneo %>%
   dplyr::left_join(
     score %>% dplyr::rename(Sample_id = "CEL_filename"),
     by = "Sample_id")
@@ -331,7 +328,7 @@ names(score) <-  purrr::map_chr(
 
 
 # Filtering invalid MCPcounter estimates due missing marker genes
-nme <- validation_neoadj_stat %>%
+nme <- validation_neo_stat %>%
   dplyr::filter(Valid_modules) %>%
   # "Becht_2016" and "MCPcounter" represents same modules.
   # Modules with "Becht_2016" keyword is computed as an average.
@@ -348,7 +345,15 @@ score <- score %>%
 
 
 # score_neoadj updation
-score_neoadj <- score_neoadj %>%
+score_neoadj_finneo <- score_neoadj_finneo %>%
+  dplyr::left_join(
+    score %>% dplyr::rename(Sample_id = "Sample_geo_accession"),
+    by = "Sample_id")
+# discarding MCPcounter estimates not valid in finher;
+# finneo considers common valid modules in both finher and neoadjuvant
+score_neoadj_finneo = score_neoadj_finneo[names(score_finher_finneo)]
+
+score_neoadj_neo <- score_neoadj_neo %>%
   dplyr::left_join(
     score %>% dplyr::rename(Sample_id = "Sample_geo_accession"),
     by = "Sample_id")
@@ -358,15 +363,21 @@ score_neoadj <- score_neoadj %>%
 
 
 
+
+
 # 5. Module agreement(gene), correlation in finher and neoadj
 # ==============================================================================
 
-glimpse(score_finher)
-glimpse(score_neoadj)
+# glimpse(score_finher_finneo)
+# glimpse(score_neoadj_finneo)
+# glimpse(score_neoadj_neo)
 
-# FinHER
 
-module_overlap <- module_gene_overlap(lst = module_list_finher)
+
+# Finneo module agreement
+# >>>>>>>>>>>>>>>>>>>>>>>
+
+module_overlap <- module_gene_overlap(lst = module_list_sizecor_selected_finneo)
 
 module_annot <-  module_overlap %>%
   dplyr::select(Module_name, Module_name2) %>%
@@ -379,18 +390,38 @@ module_annot <-  module_overlap %>%
           "De.novo_Immune",
           "De.novo_ECM"
         ) ~ "De-novo",
+
+
         .x %in% c(
-          "Gruosso2019_Immune",
+          "Gruosso2019_Immune", "Hamy2016_Immune",
+          "Teschendorff2007_Immune", "Yang2018_Immune",
+          "Desmedt2008_STAT1"
+        ) ~ "Immune", #"General-Immune",
+
+        .x %in% c(
           "Gruosso2019_Interferon",
-          "Gruosso2019_Cholesterol",
-          "Gruosso2019_Fibrosis"
-        ) ~ "TIL-localization",
+          "Farmer2009_MX1", "Hamy2016_Interferon",
+          "Nirmal2018_Interferon"
+        ) ~ "Interferon", #"General-Interferon",
+
         .x %in% c(
-          "General_Immune",
-          "General_Interferon",
-          "General_ECM",
-          "General_Cholesterol"
-        ) ~ "General",
+          "Gruosso2019_Cholesterol", "Ehmsen2019_Chol",
+          "Simigdala2016_Chol", "Sorrentino2014_Chol"
+        ) ~ "Cholesterol", # "General-Cholesterol",
+
+        .x %in% c(
+          "Gruosso2019_Fibrosis",
+          "Hamy2016_Ecm", "Naba2014_Ecmcore",
+          "Triulzi2013_Ecm"
+        ) ~ "Fibrosis", # "General-Fibrosis",
+
+        .x %in% c(
+          "Pooled_Immune",
+          "Pooled_Interferon",
+          "Pooled_Fibrosis",
+          "Pooled_Cholesterol"
+        ) ~ "Pooled",
+
         .x %in% c(
           "Tcell",
           "CD8.Tcell",
@@ -403,25 +434,26 @@ module_annot <-  module_overlap %>%
           "Endothelial",
           "Fibroblasts"
         ) ~ "MCP-counter",
-        .x %in% c(
-          "General_Proliferation",
-          "Tissue_Non.breast",
-          "Human_Behaviour"
-        ) ~ "Control",
+
         TRUE ~ "Error"
       )
     ),
     Module_group_color = purrr::map_chr(
       Module_group,
       ~case_when(
-        .x == "De-novo" ~ "tomato",
-        .x == "TIL-localization" ~ "forestgreen",
-        .x == "General" ~ "purple",
-        .x == "MCP-counter" ~ "orange",
-        .x == "Control" ~ "gray20",
-        TRUE ~ "Error"
+
+        .x == "De-novo" ~ "#e41a1c", # red "tomato",
+        .x == "Immune" ~ "#377eb8", # blue "forestgreen",
+        .x == "Interferon" ~ "#4daf4a", # green "purple",
+        .x == "Fibrosis" ~ "#984ea3",  #"purple",
+        .x == "Cholesterol" ~ "#ff7f00", #"orange",
+        .x == "Pooled" ~ "gray20",
+        .x == "MCP-counter" ~ "#a65628", # brown "steelblue",
+
+         TRUE ~ "Error"
       ))
   )
+
 
 
 p_agreement <- module_gene_overlap_plot(
@@ -431,74 +463,139 @@ p_agreement <- module_gene_overlap_plot(
   module_label = module_annot$Module_name2,
   module_group = module_annot$Module_group,
   module_group_col = module_annot$Module_group_color,
-  module_group_vline = c(0.5, 3.5, 7.5, 11.5, 14.5, 17.5),
-  module_group_hline = c(0.5, 3.5, 7.5, 11.5, 14.5, 17.5),
-  module_group_legend_rows = 3,
+  module_group_vline = c(0.5, 3.5, 5.5, 9.5, 12.5, 13.5,17.5,18.5),
+  module_group_hline = c(0.5, 3.5, 5.5, 9.5, 12.5, 13.5,17.5,18.5),
+  module_group_legend_rows = 4,
   line_col = "gray20",
-  ticksize.x = 7,
+  ticksize.x = 8,
   ticksize.y = 5.5,
-  angle = 45,
-  axis.text.size = 7.5,
-  axis.text.x.vjust = 1,
-  plotarea_text_size = 2
+  angle = 90,
+  axis.text.size = 7,
+  axis.text.x.vjust = .5,
+  plotarea_text_size =  1.75
 
-)
-
-
-
-# Module-score
-
-names(score_finher)
-# [1] "Sample_id"                 "De.novo_TILsig"               "De.novo_Immune"
-# [4] "De.novo_ECM"                  "Gruosso2019_Immune"           "Gruosso2019_Interferon"
-# [7] "Gruosso2019_Cholesterol"      "Gruosso2019_Fibrosis"         "General_Immune"
-# [10] "General_Interferon"           "General_ECM"                  "General_Cholesterol"
-# [13] "Tcell"                        "Monocytic.Lineage"            "Fibroblasts"
-# [16] "General_Proliferation"        "Tissue_Non.breast"            "Human_Behaviour"
-# [19] "MCPcounter_Tcell"             "MCPcounter_Monocytic.Lineage" "MCPcounter_Fibroblasts"
-
-# Correlation between sigscore and MCPcounter estimates
-cor(score_finher[,c("Tcell","Monocytic.Lineage", "Fibroblasts")],
-    score_finher[,c("MCPcounter_Tcell", "MCPcounter_Monocytic.Lineage",
-                    "MCPcounter_Fibroblasts")]) %>%
-  diag()
-#  1 1 1 # perfect correlation between sigscore and MCPcounter estimates
-
-# Celltype sigscore is replaced by MCPcounter estimates
-score <- score_finher[ , c(1:12,19:21,16:18)] %>%
-  dplyr::rename_with(~(str_replace(.x, "MCPcounter_", "")))
-
-p_correlation <- module_correlation_plot(
-  module_score = score, # module score output from get_module_score_2()
-  score_col = c(low = "darkgoldenrod", mid = "white", high = "darkcyan"),
-  module_group = module_annot$Module_group, # char vector of module group name, preserve module order as of module score df
-  module_group_col = module_annot$Module_group_color, # char vector of module group color, preserve order
-  module_group_vline = c(0.5, 3.5, 7.5, 11.5, 14.5, 17.5),
-  module_group_hline = c(0.5, 3.5, 7.5, 11.5, 14.5, 17.5),
-  module_group_legend_rows = 3,
-  line_col = "gray20",
-  ticksize.x = 7,
-  ticksize.y = 5.5,
-  angle = 45,
-  axis.text.size = 7.5,
-  axis.text.x.vjust = 1,
-  plotarea_text_size = 2
 )
 
 
 # plot printin
-pdf(file = str_c(out_figures,"Module_list_finher_overlap_and_cocorrelation.pdf"),
-    width = 7.5, height = 9)
+pdf(file = str_c(out_figures,"Module_list_sizecor_selected_finneo_overlap.pdf"),
+    width = 5.5, height = 6)
 print(
-  ggarrange( p_agreement, p_correlation,
-             ncol = 1,
-             nrow = 2,
-             labels = c("A", "B"),
-             align = "hv",
-             widths = 1,
-             # heights = c(.61,.39),
-             legend = "right",
-             common.legend = F
+  p_agreement +
+    theme(plot.title.position = "plot",
+          plot.title = element_text(hjust = 0.5),
+          axis.text = element_text(face = "bold"))
+      )
+dev.off()
+
+
+
+
+
+# Finneo module-score in finher and neoadj
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+# FinHER
+
+names(score_finher_finneo)
+# [1] "Sample_id"              "De.novo_TILsig"         "De.novo_Immune"
+# [4] "De.novo_ECM"            "Hamy2016_Immune"        "Yang2018_Immune"
+# [7] "Gruosso2019_Interferon" "Farmer2009_MX1"         "Hamy2016_Interferon"
+# [10] "Nirmal2018_Interferon"  "Hamy2016_Ecm"           "Naba2014_Ecmcore"
+# [13] "Triulzi2013_Ecm"        "Sorrentino2014_Chol"    "Pooled_Immune"
+# [16] "Pooled_Interferon"      "Pooled_ECM"             "Pooled_Cholesterol"
+# [19] "Fibroblasts"            "MCPcounter_Fibroblasts"
+
+# Correlation between sigscore and MCPcounter estimates
+cor(score_finher_finneo[,c("Fibroblasts")],
+    score_finher_finneo[,c("MCPcounter_Fibroblasts")]) %>%
+  diag()
+#  0.9914172 # perfect correlation between sigscore and MCPcounter estimates
+
+# Celltype sigscore is replaced by MCPcounter estimates
+score <- score_finher_finneo[ , c(1:18,20)] %>%
+  dplyr::rename_with(~(str_replace(.x, "MCPcounter_", "")))
+
+p_correlation_finher <- module_correlation_plot(
+  module_score = score, # module score output from get_module_score_2()
+  score_col = c(low = "darkgoldenrod", mid = "white", high = "darkcyan"),
+  module_group = module_annot$Module_group, # char vector of module group name, preserve module order as of module score df
+  module_group_col = module_annot$Module_group_color, # char vector of module group color, preserve order
+  module_group_vline = c(0.5, 3.5, 5.5, 9.5, 12.5, 13.5,17.5,18.5),
+  module_group_hline = c(0.5, 3.5, 5.5, 9.5, 12.5, 13.5,17.5,18.5),
+  module_group_legend_rows = 4,
+  line_col = "gray20",
+  ticksize.x = 6.5,
+  ticksize.y = 5.5,
+  angle = 45,
+  axis.text.size = 7,
+  axis.text.x.vjust = 1,
+  plotarea_text_size = 1.75
+)
+
+
+# Neoadj
+
+names(score_neoadj_finneo)
+# [1] "Sample_id"              "De.novo_TILsig"         "De.novo_Immune"
+# [4] "De.novo_ECM"            "Hamy2016_Immune"        "Yang2018_Immune"
+# [7] "Gruosso2019_Interferon" "Farmer2009_MX1"         "Hamy2016_Interferon"
+# [10] "Nirmal2018_Interferon"  "Hamy2016_Ecm"           "Naba2014_Ecmcore"
+# [13] "Triulzi2013_Ecm"        "Sorrentino2014_Chol"    "Pooled_Immune"
+# [16] "Pooled_Interferon"      "Pooled_ECM"             "Pooled_Cholesterol"
+# [19] "Fibroblasts"            "MCPcounter_Fibroblasts"
+
+# Correlation between sigscore and MCPcounter estimates
+cor(score_neoadj_finneo[,c("Fibroblasts")],
+    score_neoadj_finneo[,c("MCPcounter_Fibroblasts")]) %>%
+  diag()
+#  0.9730348 # perfect correlation between sigscore and MCPcounter estimates
+
+# Celltype sigscore is replaced by MCPcounter estimates
+score <- score_neoadj_finneo[ , c(1:18,20)] %>%
+  dplyr::rename_with(~(str_replace(.x, "MCPcounter_", "")))
+
+p_correlation_neoadj <- module_correlation_plot(
+  module_score = score, # module score output from get_module_score_2()
+  score_col = c(low = "darkgoldenrod", mid = "white", high = "darkcyan"),
+  module_group = module_annot$Module_group, # char vector of module group name, preserve module order as of module score df
+  module_group_col = module_annot$Module_group_color, # char vector of module group color, preserve order
+  module_group_vline = c(0.5, 3.5, 5.5, 9.5, 12.5, 13.5,17.5,18.5),
+  module_group_hline = c(0.5, 3.5, 5.5, 9.5, 12.5, 13.5,17.5,18.5),
+  module_group_legend_rows = 4,
+  line_col = "gray20",
+  ticksize.x = 6.5,
+  ticksize.y = 5.5,
+  angle = 45,
+  axis.text.size = 7,
+  axis.text.x.vjust = 1,
+  plotarea_text_size = 1.75
+)
+
+
+
+# plot printing
+pdf(file = str_c(out_figures,"Module_list_sizecor_selected_finneo_correlation.pdf"),
+    width = 6.5, height = 8.5)
+print(
+  ggarrange(
+    p_correlation_finher +
+      theme(plot.title.position = "plot",
+            plot.title = element_text(hjust = 0.5),
+            axis.text = element_text(face = "bold")), # A
+
+    p_correlation_neoadj +
+      theme(plot.title.position = "plot",
+            plot.title = element_text(hjust = 0.5),
+            axis.text = element_text(face = "bold")), # B
+
+    ncol = 1,
+    nrow = 2,
+    labels = c("A", "B"),
+    align = "hv",
+    widths = 1,
+    legend = "right",
+    common.legend = F
   ),
   newpage = F
 )
@@ -507,9 +604,10 @@ dev.off()
 
 
 
-# Neoadj
+# Neo module agreement and correlation in neoadj
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-module_overlap <- module_gene_overlap(lst = module_list_neoadj)
+module_overlap <- module_gene_overlap(lst = module_list_sizecor_selected_neo)
 
 module_annot <-  module_overlap %>%
   dplyr::select(Module_name, Module_name2) %>%
@@ -523,17 +621,34 @@ module_annot <-  module_overlap %>%
           "De.novo_ECM"
         ) ~ "De-novo",
         .x %in% c(
-          "Gruosso2019_Immune",
-          "Gruosso2019_Interferon",
-          "Gruosso2019_Cholesterol",
-          "Gruosso2019_Fibrosis"
-        ) ~ "TIL-localization",
+          "Gruosso2019_Immune", "Hamy2016_Immune",
+          "Teschendorff2007_Immune", "Yang2018_Immune",
+          "Desmedt2008_STAT1"
+        ) ~ "Immune", # "General-Immune",
+
         .x %in% c(
-          "General_Immune",
-          "General_Interferon",
-          "General_ECM",
-          "General_Cholesterol"
-        ) ~ "General",
+          "Gruosso2019_Interferon",
+          "Farmer2009_MX1", "Hamy2016_Interferon",
+          "Nirmal2018_Interferon"
+        ) ~ "Interferon", # "General-Interferon",
+
+        .x %in% c(
+          "Gruosso2019_Cholesterol", "Ehmsen2019_Chol",
+          "Simigdala2016_Chol", "Sorrentino2014_Chol"
+        ) ~ "Cholesterol", # "General-Cholesterol",
+
+        .x %in% c(
+          "Gruosso2019_Fibrosis",
+          "Hamy2016_Ecm", "Naba2014_Ecmcore", "Triulzi2013_Ecm"
+        ) ~ "Fibrosis", # "General-Fibrosis",
+
+        .x %in% c(
+          "Pooled_Immune",
+          "Pooled_Interferon",
+          "Pooled_Fibrosis",
+          "Pooled_Cholesterol"
+        ) ~ "Pooled",
+
         .x %in% c(
           "Tcell",
           "CD8.Tcell",
@@ -546,22 +661,22 @@ module_annot <-  module_overlap %>%
           "Endothelial",
           "Fibroblasts"
         ) ~ "MCP-counter",
-        .x %in% c(
-          "General_Proliferation",
-          "Tissue_Non.breast",
-          "Human_Behaviour"
-        ) ~ "Control",
+
         TRUE ~ "Error"
       )
     ),
     Module_group_color = purrr::map_chr(
       Module_group,
       ~case_when(
-        .x == "De-novo" ~ "tomato",
-        .x == "TIL-localization" ~ "forestgreen",
-        .x == "General" ~ "purple",
-        .x == "MCP-counter" ~ "orange",
-        .x == "Control" ~ "gray20",
+
+        .x == "De-novo" ~ "#e41a1c", # red "tomato",
+        .x == "Immune" ~ "#377eb8", # blue "forestgreen",
+        .x == "Interferon" ~ "#4daf4a", # green "purple",
+        .x == "Fibrosis" ~ "#984ea3",  #"purple",
+        .x == "Cholesterol" ~ "#ff7f00", #"orange",
+        .x == "Pooled" ~ "gray20",
+        .x == "MCP-counter" ~ "#a65628", # brown "steelblue",
+
         TRUE ~ "Error"
       ))
   )
@@ -574,50 +689,56 @@ p_agreement <- module_gene_overlap_plot(
   module_label = module_annot$Module_name2,
   module_group = module_annot$Module_group,
   module_group_col = module_annot$Module_group_color,
-  module_group_vline = c(0.5, 3.5, 7.5, 11.5, 20.5, 23.5),
-  module_group_hline = c(0.5, 3.5, 7.5, 11.5, 20.5, 23.5),
-  module_group_legend_rows = 3,
+  module_group_vline = c(0.5, 3.5, 8.5, 12.5, 16.5, 20.5,24.5, 30.5),
+  module_group_hline = c(0.5, 3.5, 8.5, 12.5, 16.5, 20.5,24.5, 30.5),
+  module_group_legend_rows = 4,
   line_col = "gray20",
-  ticksize.x = 6.5,
-  ticksize.y = 4.5,
+  ticksize.x = 4.5,
+  ticksize.y = 3.5,
   angle = 45,
-  axis.text.size = 7.5,
+  axis.text.size = 7,
   axis.text.x.vjust = 1,
-  plotarea_text_size = 2
-
+  plotarea_text_size = 1.75
 )
 
 
 
 # Module-score
 
-names(score_neoadj)
-# [1] "Sample_id"                    "De.novo_TILsig"               "De.novo_Immune"
-# [4] "De.novo_ECM"                  "Gruosso2019_Immune"           "Gruosso2019_Interferon"
-# [7] "Gruosso2019_Cholesterol"      "Gruosso2019_Fibrosis"         "General_Immune"
-# [10] "General_Interferon"           "General_ECM"                  "General_Cholesterol"
-# [13] "Tcell"                        "Cyto.Lymphocyte"              "B.Lineage"
-# [16] "NK.Cells"                     "Monocytic.Lineage"            "Myeloid.Dendritic"
-# [19] "Neutrophils"                  "Endothelial"                  "Fibroblasts"
-# [22] "General_Proliferation"        "Tissue_Non.breast"            "Human_Behaviour"
-# [25] "MCPcounter_Tcell"             "MCPcounter_Cyto.Lymphocyte"   "MCPcounter_B.Lineage"
-# [28] "MCPcounter_NK.Cells"          "MCPcounter_Monocytic.Lineage" "MCPcounter_Myeloid.Dendritic"
-# [31] "MCPcounter_Neutrophils"       "MCPcounter_Endothelial"       "MCPcounter_Fibroblasts"
-
+names(score_neoadj_neo)
+# [1] "Sample_id"                    "De.novo_TILsig"
+# [3] "De.novo_Immune"               "De.novo_ECM"
+# [5] "Gruosso2019_Immune"           "Hamy2016_Immune"
+# [7] "Teschendorff2007_Immune"      "Yang2018_Immune"
+# [9] "Desmedt2008_STAT1"            "Gruosso2019_Interferon"
+# [11] "Farmer2009_MX1"               "Hamy2016_Interferon"
+# [13] "Nirmal2018_Interferon"        "Gruosso2019_Cholesterol"
+# [15] "Ehmsen2019_Chol"              "Simigdala2016_Chol"
+# [17] "Sorrentino2014_Chol"          "Gruosso2019_Fibrosis"
+# [19] "Hamy2016_Ecm"                 "Naba2014_Ecmcore"
+# [21] "Triulzi2013_Ecm"              "Pooled_Immune"
+# [23] "Pooled_Interferon"            "Pooled_Fibrosis"
+# [25] "Pooled_Cholesterol"           "Tcell"
+# [27] "B.Lineage"                    "Monocytic.Lineage"
+# [29] "Myeloid.Dendritic"            "Endothelial"
+# [31] "Fibroblasts"                  "MCPcounter_Tcell"
+# [33] "MCPcounter_B.Lineage"         "MCPcounter_Monocytic.Lineage"
+# [35] "MCPcounter_Myeloid.Dendritic" "MCPcounter_Endothelial"
+# [37] "MCPcounter_Fibroblasts"
 
 # Correlation between sigscore and MCPcounter estimates
-cor(score_neoadj[,c("Tcell", "Cyto.Lymphocyte", "B.Lineage",
-  "NK.Cells", "Monocytic.Lineage", "Myeloid.Dendritic",
-  "Neutrophils", "Endothelial", "Fibroblasts")],
-  score_neoadj[,c("MCPcounter_Tcell", "MCPcounter_Cyto.Lymphocyte", "MCPcounter_B.Lineage",
-      "MCPcounter_NK.Cells", "MCPcounter_Monocytic.Lineage", "MCPcounter_Myeloid.Dendritic",
-      "MCPcounter_Neutrophils", "MCPcounter_Endothelial", "MCPcounter_Fibroblasts")]) %>%
+cor(score_neoadj_neo[,c("Tcell","B.Lineage",
+  "Monocytic.Lineage", "Myeloid.Dendritic",
+  "Endothelial", "Fibroblasts")],
+  score_neoadj_neo[,c("MCPcounter_Tcell", "MCPcounter_B.Lineage",
+       "MCPcounter_Monocytic.Lineage", "MCPcounter_Myeloid.Dendritic",
+      "MCPcounter_Endothelial", "MCPcounter_Fibroblasts")]) %>%
   diag()
 #  1 1 1 1 1 1 1 1 1 # perfect correlation between sigscore and MCPcounter estimates
 
 
 # Celltype sigscore is replaced by MCPcounter estimates
-score <- score_neoadj[ , c(1:12,25:33,22:24)] %>%
+score <- score_neoadj_neo[ ,c(1:25,32:37)] %>%
   dplyr::rename_with(~(str_replace(.x, "MCPcounter_", "")))
 
 
@@ -626,174 +747,82 @@ p_correlation <- module_correlation_plot(
   score_col = c(low = "darkgoldenrod", mid = "white", high = "darkcyan"),
   module_group = module_annot$Module_group, # char vector of module group name, preserve module order as of module score df
   module_group_col = module_annot$Module_group_color, # char vector of module group color, preserve order
-  module_group_vline = c(0.5, 3.5, 7.5, 11.5, 20.5, 23.5),
-  module_group_hline = c(0.5, 3.5, 7.5, 11.5, 20.5, 23.5),
-  module_group_legend_rows = 3,
+  module_group_vline = c(0.5, 3.5, 8.5, 12.5, 16.5, 20.5,24.5, 30.5),
+  module_group_hline = c(0.5, 3.5, 8.5, 12.5, 16.5, 20.5,24.5, 30.5),
+  module_group_legend_rows = 4,
   line_col = "gray20",
-  ticksize.x = 6.5,
-  ticksize.y = 4.5,
+  ticksize.x = 4.5,
+  ticksize.y = 3.5,
   angle = 45,
-  axis.text.size = 7.5,
+  axis.text.size = 7,
   axis.text.x.vjust = 1,
-  plotarea_text_size = 2
+  plotarea_text_size = 1.75
 )
 
 
 
 
 # plot printin
-pdf(file = str_c(out_figures,"Module_list_neoadj_overlap_and_cocorrelation.pdf"),
+pdf(file = str_c(out_figures,"Module_list_sizecor_selected_neo_overlap_correlation.pdf"),
     width = 7.5, height = 9)
+
 print(
-  ggarrange( p_agreement, p_correlation,
-             ncol = 1,
-             nrow = 2,
-             labels = c("A", "B"),
-             align = "hv",
-             widths = 1,
-             # heights = c(.61,.39),
-             legend = "right",
-             common.legend = F
+  ggarrange(
+    p_agreement +
+      theme(plot.title.position = "plot",
+            plot.title = element_text(hjust = 0.5),
+            axis.text = element_text(face = "bold")), # A
+    p_correlation  +
+      theme(plot.title.position = "plot",
+            plot.title = element_text(hjust = 0.5),
+            axis.text = element_text(face = "bold")), # B
+    ncol = 1,
+    nrow = 2,
+    labels = c("A", "B"),
+    align = "hv",
+    widths = 1,
+    # heights = c(.61,.39),
+    legend = "right",
+    common.legend = F
   ),
   newpage = F
 )
 dev.off()
 
+
+
 #
 # ==============================================================================
 
 
 
-# 6. Additional formating of clinincal data to aid in analysis
+# 6. Additional formatting of clinical data to aid in analysis
 # ==============================================================================
 
-# clin_neoadj <- clin_neoadj %>%
-#   dplyr::mutate(
-#     # Renaming by preserving original variables
-#     TILsig_scaled = TILsig %>% genefu::rescale(q = 0.05),
-#     TILsig_APP_Fc = APP_Fc %>% genefu::rescale(q = 0.05),
-#     TILsig_Immune = Immune %>% genefu::rescale(q = 0.05),
-#     TILsig_IFNg = IFN_gamma %>% genefu::rescale(q = 0.05),
-#     TILsig_ECM = ECM %>% genefu::rescale(q = 0.05),
-#     TILsig_Adhesion = Adhesion %>% genefu::rescale(q = 0.05),
-#     Immune1 = Gruosso_2019_Immune.cdsig1 %>% genefu::rescale(q = 0.05),
-#     Immune2 = Hamy_2016_Immune %>% genefu::rescale(q = 0.05),
-#     # Immune3 = Desmedt_2008_Immune %>% genefu::rescale(q = 0.05),
-#     Immune3 = Yang_2018_Immune %>% genefu::rescale(q = 0.05),
-#     Interferon1 = Gruosso_2019_Interferon.edsig2 %>% genefu::rescale(q = 0.05),
-#     Interferon2 = Hamy_2016_Interferon %>% genefu::rescale(q = 0.05),
-#     Interferon3 = Nirmal_2018_Interferon %>% genefu::rescale(q = 0.05),
-#     Cholesterol1 = Gruosso_2019_Cholesterol.edsig5 %>% genefu::rescale(q = 0.05),
-#     Cholesterol2 = Sorrentino_2014_Cholesterol.mevalonate %>% genefu::rescale(q = 0.05),
-#     Cholesterol3 = Simigdala_2016_Cholesterol %>% genefu::rescale(q = 0.05),
-#     Fibrosis1 = Gruosso_2019_Fibrosis.cdsig3 %>% genefu::rescale(q = 0.05),
-#     Fibrosis2 = Hamy_2016_Ecm %>% genefu::rescale(q = 0.05),
-#     Fibrosis3 = Triulzi_2013_Ecm %>% genefu::rescale(q = 0.05),
-#     Proliferation1 = Desmedt_2008_Proliferation %>% genefu::rescale(q = 0.05),
-#     Proliferation2 = Yang_2018_Proliferation %>% genefu::rescale(q = 0.05),
-#     Proliferation3 = Nirmal_2018_Proliferation %>% genefu::rescale(q = 0.05),
-#     Tcell = MCPcounter_T.Cells %>% genefu::rescale(q = 0.05),
-#     CLymphocyte = MCPcounter_Cytotoxic.Lymphocytes %>% genefu::rescale(q = 0.05),
-#     Bcell = MCPcounter_B.Lineage %>% genefu::rescale(q = 0.05),
-#     NKcell = MCPcounter_Nk.Cells %>% genefu::rescale(q = 0.05),
-#     Monocyte = MCPcounter_Monocytic.Lineage %>% genefu::rescale(q = 0.05),
-#     MDendritic = MCPcounter_Myeloid.Dendritic.Cells %>% genefu::rescale(q = 0.05),
-#     # Endothelial = Becht_2016_Endothelial.Cells, # reliable but irrelevant !!!
-#     Fibroblast = MCPcounter_Fibroblasts %>% genefu::rescale(q = 0.05)
-#   )
-#
-#
-# clin_finher <- clin_finher %>%
-#   dplyr::mutate(
-#     # Renaming by preserving original variables
-#     TILsig_scaled = TILsig %>% genefu::rescale(q = 0.05),
-#     TILsig_APP_Fc = APP_Fc %>% genefu::rescale(q = 0.05),
-#     TILsig_Immune = Immune %>% genefu::rescale(q = 0.05),
-#     TILsig_IFNg = IFN_gamma %>% genefu::rescale(q = 0.05),
-#     TILsig_Innate = Innate %>% genefu::rescale(q = 0.05),
-#     TILsig_ECM = ECM %>% genefu::rescale(q = 0.05),
-#     TILsig_Adhesion = Adhesion %>% genefu::rescale(q = 0.05),
-#     Immune1 = Gruosso_2019_Immune.cdsig1 %>% genefu::rescale(q = 0.05),
-#     Immune2 = Hamy_2016_Immune %>% genefu::rescale(q = 0.05),
-#     # Immune3 = Desmedt_2008_Immune %>% genefu::rescale(q = 0.05),
-#     Immune3 = Yang_2018_Immune %>% genefu::rescale(q = 0.05),
-#     Interferon1 = Gruosso_2019_Interferon.edsig2 %>% genefu::rescale(q = 0.05),
-#     Interferon2 = Hamy_2016_Interferon %>% genefu::rescale(q = 0.05),
-#     Interferon3 = Nirmal_2018_Interferon %>% genefu::rescale(q = 0.05),
-#     # Cholesterol1 = Gruosso_2019_Cholesterol.edsig5, # unreliable !!!
-#     Cholesterol2 = Sorrentino_2014_Cholesterol.mevalonate %>% genefu::rescale(q = 0.05),
-#     # Cholesterol3 = Simigdala_2016_Cholesterol, # unreliable !!!
-#     Fibrosis1 = Gruosso_2019_Fibrosis.cdsig3 %>% genefu::rescale(q = 0.05),
-#     Fibrosis2 = Hamy_2016_Ecm %>% genefu::rescale(q = 0.05),
-#     Fibrosis3 = Triulzi_2013_Ecm %>% genefu::rescale(q = 0.05),
-#     Proliferation1 = Desmedt_2008_Proliferation %>% genefu::rescale(q = 0.05),
-#     Proliferation2 = Yang_2018_Proliferation %>% genefu::rescale(q = 0.05),
-#     Proliferation3 = Nirmal_2018_Proliferation %>% genefu::rescale(q = 0.05),
-#     Tcell = MCPcounter_T.Cells %>% genefu::rescale(q = 0.05),
-#     # CLymphocyte = MCPcounter_Cytotoxic.Lymphocytes, # unreliable !!!
-#     # Bcell = MCPcounter_B.Lineage, # unreliable !!!
-#     # NKcell = MCPcounter_Nk.Cells, # unreliable !!!
-#     # Monocyte = MCPcounter_Monocytic.Lineage, # unreliable !!!
-#     # MDendritic = MCPcounter_Myeloid.Dendritic.Cells, # unreliable !!!
-#     # Endothelial = Becht_2016_Endothelial.Cells, # unreliable and irrelevant !!!
-#     Fibroblast = MCPcounter_Fibroblasts %>% genefu::rescale(q = 0.05)
-#   )
-
-clin_neoadj <- clin_neoadj %>%
-  dplyr::select(1:98) %>%
+clin_finher_finneo <- clin_finher %>%
   dplyr::left_join(
-    score_neoadj %>%
-      dplyr::rename(Sample_geo_accession = "Sample_id"),
-    by = "Sample_geo_accession")
-
-clin_finher <- clin_finher %>%
-  dplyr::select(1:78) %>%
-  dplyr::left_join(
-    score_finher %>%
+    score_finher_finneo %>%
       dplyr::rename(CEL_filename = "Sample_id"),
     by = "CEL_filename")
 
 
-# Rescaling neoadj score
-clin_neoadj <- clin_neoadj %>%
-dplyr::mutate(
+clin_neoadj_finneo <- clin_neoadj %>%
+  dplyr::left_join(
+    score_neoadj_finneo %>%
+      dplyr::rename(Sample_geo_accession = "Sample_id"),
+    by = "Sample_geo_accession")
 
-  # Renaming by preserving original variables
-  scaled_Denovo_TILsig = De.novo_TILsig %>% genefu::rescale(q = 0.05),
-  scaled_Denovo_Immune = De.novo_Immune %>% genefu::rescale(q = 0.05),
-  scaled_Denovo_ECM = De.novo_ECM %>% genefu::rescale(q = 0.05),
 
-  scaled_Gruosso2019_Immune = Gruosso2019_Immune %>% genefu::rescale(q = 0.05),
-  scaled_Gruosso2019_Interferon = Gruosso2019_Interferon %>% genefu::rescale(q = 0.05),
-  scaled_Gruosso2019_Cholesterol = Gruosso2019_Cholesterol %>% genefu::rescale(q = 0.05),
-  scaled_Gruosso2019_Fibrosis = Gruosso2019_Fibrosis %>% genefu::rescale(q = 0.05),
-
-  scaled_General_Immune = General_Immune %>% genefu::rescale(q = 0.05),
-  scaled_General_Interferon = General_Interferon %>% genefu::rescale(q = 0.05),
-  scaled_General_ECM = General_ECM %>% genefu::rescale(q = 0.05),
-  scaled_General_Cholesterol = General_Cholesterol %>% genefu::rescale(q = 0.05),
-
-  # !!! No rescaling on MCPcounter estimates
-  # # Only MCPcounter estimates of celltypes are considered
-  # MCPcounter_Tcell = MCPcounter_Tcell %>% genefu::rescale(q = 0.05),
-  # MCPcounter_Cyto.Lymphocyte = MCPcounter_Cyto.Lymphocyte %>% genefu::rescale(q = 0.05),
-  # MCPcounter_B.Lineage = MCPcounter_B.Lineage %>% genefu::rescale(q = 0.05),
-  # MCPcounter_NK.Cells = MCPcounter_NK.Cells %>% genefu::rescale(q = 0.05),
-  # MCPcounter_Monocytic.Lineage = MCPcounter_Monocytic.Lineage %>% genefu::rescale(q = 0.05),
-  # MCPcounter_Myeloid.Dendritic = MCPcounter_Myeloid.Dendritic %>% genefu::rescale(q = 0.05),
-  # MCPcounter_Neutrophils = MCPcounter_Neutrophils %>% genefu::rescale(q = 0.05),
-  # MCPcounter_Endothelial = MCPcounter_Endothelial %>% genefu::rescale(q = 0.05),
-  # MCPcounter_Fibroblasts = MCPcounter_Fibroblasts %>% genefu::rescale(q = 0.05),
-
-  scaled_Control_Proliferation = General_Proliferation %>% genefu::rescale(q = 0.05),
-  scaled_Control_Non.breast.tissue = Tissue_Non.breast %>% genefu::rescale(q = 0.05),
-  scaled_Control_Human_Behaviour = Human_Behaviour %>% genefu::rescale(q = 0.05)
-)
+clin_neoadj_neo <- clin_neoadj %>%
+  dplyr::left_join(
+    score_neoadj_neo %>%
+      dplyr::rename(Sample_geo_accession = "Sample_id"),
+    by = "Sample_geo_accession")
 
 
 
 # Rescaling finher score
-clin_finher <- clin_finher %>%
+clin_finher_finneo <- clin_finher_finneo %>%
   dplyr::mutate(
 
     # Renaming by preserving original variables
@@ -801,28 +830,111 @@ clin_finher <- clin_finher %>%
     scaled_Denovo_Immune = De.novo_Immune %>% genefu::rescale(q = 0.05),
     scaled_Denovo_ECM = De.novo_ECM %>% genefu::rescale(q = 0.05),
 
-    scaled_Gruosso2019_Immune = Gruosso2019_Immune %>% genefu::rescale(q = 0.05),
+    scaled_Hamy2016_Immune = Hamy2016_Immune %>% genefu::rescale(q = 0.05),
+    scaled_Yang2018_Immune = Yang2018_Immune %>% genefu::rescale(q = 0.05),
     scaled_Gruosso2019_Interferon = Gruosso2019_Interferon %>% genefu::rescale(q = 0.05),
-    scaled_Gruosso2019_Cholesterol = Gruosso2019_Cholesterol %>% genefu::rescale(q = 0.05),
-    scaled_Gruosso2019_Fibrosis = Gruosso2019_Fibrosis %>% genefu::rescale(q = 0.05),
+    scaled_Farmer2009_MX1 = Farmer2009_MX1 %>% genefu::rescale(q = 0.05),
+    scaled_Hamy2016_Interferon = Hamy2016_Interferon %>% genefu::rescale(q = 0.05),
+    scaled_Nirmal2018_Interferon = Nirmal2018_Interferon %>% genefu::rescale(q = 0.05),
+    scaled_Hamy2016_Ecm = Hamy2016_Ecm %>% genefu::rescale(q = 0.05),
+    scaled_Naba2014_Ecmcore = Naba2014_Ecmcore %>% genefu::rescale(q = 0.05),
+    scaled_Triulzi2013_Ecm = Triulzi2013_Ecm %>% genefu::rescale(q = 0.05),
+    scaled_Sorrentino2014_Chol = Sorrentino2014_Chol %>% genefu::rescale(q = 0.05),
 
-    scaled_General_Immune = General_Immune %>% genefu::rescale(q = 0.05),
-    scaled_General_Interferon = General_Interferon %>% genefu::rescale(q = 0.05),
-    scaled_General_ECM = General_ECM %>% genefu::rescale(q = 0.05),
-    scaled_General_Cholesterol = General_Cholesterol %>% genefu::rescale(q = 0.05),
+    scaled_Pooled_Immune = Pooled_Immune %>% genefu::rescale(q = 0.05),
+    scaled_Pooled_Interferon = Pooled_Interferon %>% genefu::rescale(q = 0.05),
+    scaled_Pooled_Fibrosis = Pooled_Fibrosis %>% genefu::rescale(q = 0.05),
+    scaled_Pooled_Cholesterol = Pooled_Cholesterol %>% genefu::rescale(q = 0.05)
+
+    # Only MCP counter estimates were considered
+    # scaled_Fibroblasts = Fibroblasts %>% genefu::rescale(q = 0.05),
 
     # !!! No rescaling on MCPcounter estimates
-    # # Only MCPcounter estimates of celltypes are considered
-    # scaled_MCPcounter_Tcell = MCPcounter_Tcell %>% genefu::rescale(q = 0.05),
-    # scaled_MCPcounter_Monocytic.Lineage = MCPcounter_Monocytic.Lineage %>% genefu::rescale(q = 0.05),
-    # scaled_MCPcounter_Fibroblasts = MCPcounter_Fibroblasts %>% genefu::rescale(q = 0.05),
-
-    scaled_Control_Proliferation = General_Proliferation %>% genefu::rescale(q = 0.05),
-    scaled_Control_Non.breast.tissue = Tissue_Non.breast %>% genefu::rescale(q = 0.05),
-    scaled_Control_Human_Behaviour = Human_Behaviour %>% genefu::rescale(q = 0.05)
+    # # Original MCPcounter estimates of celltypes are considered
 
   )
 
+
+
+# Rescaling neoadj score
+clin_neoadj_finneo <- clin_neoadj_finneo %>%
+  dplyr::mutate(
+
+    # Renaming by preserving original variables
+    scaled_Denovo_TILsig = De.novo_TILsig %>% genefu::rescale(q = 0.05),
+    scaled_Denovo_Immune = De.novo_Immune %>% genefu::rescale(q = 0.05),
+    scaled_Denovo_ECM = De.novo_ECM %>% genefu::rescale(q = 0.05),
+
+
+    scaled_Hamy2016_Immune = Hamy2016_Immune %>% genefu::rescale(q = 0.05),
+    scaled_Yang2018_Immune = Yang2018_Immune %>% genefu::rescale(q = 0.05),
+
+    scaled_Gruosso2019_Interferon = Gruosso2019_Interferon %>% genefu::rescale(q = 0.05),
+    scaled_Farmer2009_MX1 = Farmer2009_MX1 %>% genefu::rescale(q = 0.05),
+    scaled_Hamy2016_Interferon = Hamy2016_Interferon %>% genefu::rescale(q = 0.05),
+    scaled_Nirmal2018_Interferon = Nirmal2018_Interferon %>% genefu::rescale(q = 0.05),
+
+    scaled_Hamy2016_Ecm = Hamy2016_Ecm %>% genefu::rescale(q = 0.05),
+    scaled_Naba2014_Ecmcore = Naba2014_Ecmcore %>% genefu::rescale(q = 0.05),
+    scaled_Triulzi2013_Ecm = Triulzi2013_Ecm %>% genefu::rescale(q = 0.05),
+
+    scaled_Sorrentino2014_Chol = Sorrentino2014_Chol %>% genefu::rescale(q = 0.05),
+
+    scaled_Pooled_Immune = Pooled_Immune %>% genefu::rescale(q = 0.05),
+    scaled_Pooled_Interferon = Pooled_Interferon %>% genefu::rescale(q = 0.05),
+    scaled_Pooled_Fibrosis = Pooled_Fibrosis %>% genefu::rescale(q = 0.05),
+    scaled_Pooled_Cholesterol = Pooled_Cholesterol %>% genefu::rescale(q = 0.05)
+
+    # Only MCP counter estimates were considered
+    # scaled_Fibroblasts = Fibroblasts %>% genefu::rescale(q = 0.05),
+    #
+    # !!! No rescaling on MCPcounter estimates
+    # # Original MCPcounter estimates of celltypes are considered
+
+  )
+
+clin_neoadj_neo <- clin_neoadj_neo %>%
+dplyr::mutate(
+
+  # Renaming by preserving original variables
+  scaled_Denovo_TILsig = De.novo_TILsig %>% genefu::rescale(q = 0.05),
+  scaled_Denovo_Immune = De.novo_Immune %>% genefu::rescale(q = 0.05),
+  scaled_Denovo_ECM = De.novo_ECM %>% genefu::rescale(q = 0.05),
+
+
+  scaled_Gruosso2019_Immune = Gruosso2019_Immune %>% genefu::rescale(q = 0.05),
+  scaled_Hamy2016_Immune = Hamy2016_Immune %>% genefu::rescale(q = 0.05),
+  scaled_Teschendorff2007_Immune = Teschendorff2007_Immune %>% genefu::rescale(q = 0.05),
+  scaled_Yang2018_Immune = Yang2018_Immune %>% genefu::rescale(q = 0.05),
+  scaled_Desmedt2008_STAT1 = Desmedt2008_STAT1 %>% genefu::rescale(q = 0.05),
+
+  scaled_Gruosso2019_Interferon = Gruosso2019_Interferon %>% genefu::rescale(q = 0.05),
+  scaled_Farmer2009_MX1 = Farmer2009_MX1 %>% genefu::rescale(q = 0.05),
+  scaled_Hamy2016_Interferon = Hamy2016_Interferon %>% genefu::rescale(q = 0.05),
+  scaled_Nirmal2018_Interferon = Nirmal2018_Interferon %>% genefu::rescale(q = 0.05),
+
+  scaled_Gruosso2019_Cholesterol = Gruosso2019_Cholesterol %>% genefu::rescale(q = 0.05),
+  scaled_Ehmsen2019_Chol = Ehmsen2019_Chol %>% genefu::rescale(q = 0.05),
+  scaled_Simigdala2016_Chol = Simigdala2016_Chol %>% genefu::rescale(q = 0.05),
+  scaled_Sorrentino2014_Chol = Sorrentino2014_Chol %>% genefu::rescale(q = 0.05),
+
+  scaled_Gruosso2019_Fibrosis = Gruosso2019_Fibrosis %>% genefu::rescale(q = 0.05),
+  scaled_Hamy2016_Ecm = Hamy2016_Ecm %>% genefu::rescale(q = 0.05),
+  scaled_Naba2014_Ecmcore = Naba2014_Ecmcore %>% genefu::rescale(q = 0.05),
+  scaled_Triulzi2013_Ecm = Triulzi2013_Ecm %>% genefu::rescale(q = 0.05),
+
+  scaled_Pooled_Immune = Pooled_Immune %>% genefu::rescale(q = 0.05),
+  scaled_Pooled_Interferon = Pooled_Interferon %>% genefu::rescale(q = 0.05),
+  scaled_Pooled_Fibrosis = Pooled_Fibrosis %>% genefu::rescale(q = 0.05),
+  scaled_Pooled_Cholesterol = Pooled_Cholesterol %>% genefu::rescale(q = 0.05)
+
+  # Only MCP counter estimates were considered
+  # scaled_Fibroblasts = Fibroblasts %>% genefu::rescale(q = 0.05),
+  #
+  # !!! No rescaling on MCPcounter estimates
+  # Original MCPcounter estimates of celltypes are considered
+
+)
 
 #
 # ==============================================================================
@@ -832,21 +944,24 @@ clin_finher <- clin_finher %>%
 # 7. Save Robjects
 # ==============================================================================
 
-# # Robject created:
-# save(module_consolidated, file = str_c(out_data, "module_consolidated.RData"))
-# save(module_list, file = str_c(out_data, "module_list.RData"))
-# # save(module_list_subset, file = str_c(out_data, "module_list_subset.RData")) # obsolete
-# # Print consolidated finher and neoadj module subset list in figures_tables_data.R script
-# save(module_list_neoadj, file = str_c(out_data, "module_list_neoadj.RData"))
-# save(module_list_finher, file = str_c(out_data, "module_list_finher.RData"))
-
-# # save(module_stat, file = str_c(out_data, "module_stat.RData")) # obsolete
-# save(validation_neoadj_stat, file = str_c(out_data, "validation_neoadj_stat.RData"))
-# save(validation_finher_stat, file = str_c(out_data, "validation_finher_stat.RData"))
-
-# Robject updated:
-save(clin_neoadj, file = str_c(out_data, "clin_neoadj.RData"))
-save(clin_finher, file = str_c(out_data, "clin_finher.RData"))
+save(clin_finher_finneo, file = str_c(out_data, "clin_finher_finneo.RData"))
+save(clin_neoadj_finneo, file = str_c(out_data, "clin_neoadj_finneo.RData"))
+save(clin_neoadj_neo, file = str_c(out_data, "clin_neoadj_neo.RData"))
 
 #
-# ====================================================  ==========================
+# ==============================================================================
+
+
+# Clean memory
+# ==============================================================================
+
+rm(clin_finher_finneo, clin_neoadj_finneo, clin_neoadj_neo,
+   score_finher_finneo, score_neoadj_finneo, score_neoadj_neo,
+   clin_finher, clin_neoadj,
+   expr_finher, expr_neoadj,
+   module_list_sizecor_selected_finneo, module_list_sizecor_selected_neo,
+   validation_finneo_stat, validation_neo_stat,
+   tilsig_list, tilsig_clean, tilsig_bp_merged)
+
+#
+# ==============================================================================

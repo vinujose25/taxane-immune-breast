@@ -1,17 +1,17 @@
-# finher_her2.R
+# s7.1_finher_her2.R
 
 
 # What the script does?
 # >>>>>>>>>>>>>>>>>>>>>
 #
-# Prognostic, chemo interaction and herceptin interaction with TIL, TIL associated signatures and Immune celltypes.
-# Account for arm heterogenity.
+# Prognostic and chemo interaction interaction with TIL, TIL associated signatures and Immune celltypes.
+# Account for arm heterogeneity.
 # Prepare data for plotting.
 # Generate sample plot for HER2
 
 
 
-# Script strucutre
+# Script structure
 # >>>>>>>>>>>>>>>>
 # 1. Load and format clinical data.
 # 2. Explore prognosis, chemo interaction, and herceptin interaction in HER2.
@@ -76,8 +76,8 @@ clin_finher_finneo %>%
 # Average size of strata, c(27,19,26,17,18,27,16,30) %>% mean() = 22.5
 
 # Analysis
-# Note that there are *eight* stratas in HER2 BC !!!!!!!!!!!!!!!
-# 1. Sig's prognostic value in HER2 (with arm heterogenity; interaction with *eight* stratas)
+# Note that there are *eight* strata in HER2 BC !!!!!!!!!!!!!!!
+# 1. Sig's prognostic value in HER2 (with arm heterogeneity; interaction with *eight* strata)
 # 2. Sig's interaction with chemo in HER2 in pooled data with HR/TRA stratification;
 #     no within HR subtype or TRA treatment subgroup analysis due to low sample size.
 
@@ -92,33 +92,6 @@ clin_finher_finneo %>%
 # ==============================================================================
 
 
-# c(
-#   "scaled_Denovo_TILsig",
-#   "scaled_Denovo_Immune",
-#   "scaled_Denovo_ECM",
-#   "scaled_Hamy2016_Immune",
-#   "scaled_Yang2018_Immune",
-#   "scaled_Gruosso2019_Interferon",
-#   "scaled_Farmer2009_MX1",
-#   "scaled_Hamy2016_Interferon",
-#   "scaled_Nirmal2018_Interferon",
-#   "scaled_Hamy2016_Ecm",
-#   "scaled_Naba2014_Ecmcore",
-#   "scaled_Triulzi2013_Ecm",
-#   "scaled_Sorrentino2014_Chol",
-#   "MCPcounter_Fibroblasts"
-# )
-#
-# c(
-#   "scaled_Denovo_TILsig",
-#   "scaled_Denovo_Immune",
-#   "scaled_Denovo_ECM",
-#   "scaled_Pooled_Immune",
-#   "scaled_Pooled_Interferon",
-#   "scaled_Pooled_Fibrosis",
-#   "scaled_Pooled_Cholesterol",
-#   "MCPcounter_Fibroblasts"
-# )
 
 
 # 2. Explore prognosis and chemo interaction in TN.
@@ -614,101 +587,101 @@ names(finher_her2[["inter.chemo_pooled.sig"]]) <- c("RFS", "DDFS", "OS")
 
 
 
-# 3. Analysis summary
-# ==============================================================================
-
-summarize_her2 <- function(x, prog = F){
-  # x <- finher_her2$prog$DDFS
-  # prog = T
-
-  x <- purrr::map(x,
-                  function(xx, prog){
-
-                    if(prog){
-
-                      nme <- c("Variable", "HR", "Low95","Up95", "P", "P_adj", "Heterogeneity", "Ph_ok")
-                      xx <- xx$main_effect[ , nme] %>%
-                        dplyr::mutate( HR = str_c(round(HR, digits = 2),
-                                                  " (",
-                                                  round(Low95,digits=2), "-",
-                                                  round(Up95,digits=2),
-                                                  ")"),
-                                       # Note, for prognostic model the CI is in HR
-                                       Heterogeneity = str_c(round(Heterogeneity, digits=2))) %>%
-                        dplyr::rename(Het = "Heterogeneity")
-
-                    } else {
-
-                      nme <- c("Variable", "HR", "Low95","Up95", "P", "P_adj", "Ph_ok")
-                      xx <- xx$main_effect[ , nme] %>%
-                        dplyr::mutate( HR = str_c(round(HR, digits = 2),
-                                                  " (",
-                                                  round(exp(Low95),digits=2), "-",
-                                                  round(exp(Up95),digits=2),
-                                                  ")"))
-                      # Note, for interaction model the CI is in coef
-
-                    }
-
-                    xx <- xx %>%
-                      dplyr::mutate(
-                        P = str_c(round(P, digits=2)),
-                        P_adj = str_c(round(P_adj, digits=2))
-                      ) %>%
-                      dplyr::select(-c(Low95,Up95))
-                  },
-                  prog)
-
-  return(x[[1]])
-
-}
-
-xout <- list()
-
-xout[["ddfs"]] <- summarize_her2(x = finher_her2$prog_individual.sig $DDFS, prog = T)
-xout[["os"]] <- summarize_her2(x = finher_her2$prog_individual.sig$OS, prog = T)
-xout[["rfs"]] <- summarize_her2(x = finher_her2$prog_individual.sig$RFS, prog = T)
-
-write_xlsx(xout, path = str_c(out_tables,"finher_her2_prognosis_individual.sig_summary.xlsx"))
-
-
-
-xout <- list()
-
-xout[["ddfs"]] <- summarize_her2(x = finher_her2$prog_pooled.sig $DDFS, prog = T)
-xout[["os"]] <- summarize_her2(x = finher_her2$prog_pooled.sig$OS, prog = T)
-xout[["rfs"]] <- summarize_her2(x = finher_her2$prog_pooled.sig$RFS, prog = T)
-
-write_xlsx(xout, path = str_c(out_tables,"finher_her2_prognosis_pooled.sig_summary.xlsx"))
-
-
-
-xout <- list()
-
-xout[["ddfs"]] <-  summarize_her2(x = finher_her2$inter.chemo_individual.sig$DDFS, prog = F)
-xout[["os"]] <- summarize_her2(x = finher_her2$inter.chemo_individual.sig$OS, prog = F)
-xout[["rfs"]] <- summarize_her2(x = finher_her2$inter.chemo_individual.sig$RFS, prog = F)
-
-write_xlsx(xout, path = str_c(out_tables,"finher_her2_chemo_interaction_individual.sig_summary.xlsx"))
-
-
-
-xout <- list()
-
-xout[["ddfs"]] <-  summarize_her2(x = finher_her2$inter.chemo_pooled.sig$DDFS, prog = F)
-xout[["os"]] <- summarize_her2(x = finher_her2$inter.chemo_pooled.sig$OS, prog = F)
-xout[["rfs"]] <- summarize_her2(x = finher_her2$inter.chemo_pooled.sig$RFS, prog = F)
-
-write_xlsx(xout, path = str_c(out_tables,"finher_her2_chemo_interaction_pooled.sig_summary.xlsx"))
-
-
-# Note !!!!!!!:
-# Only de-novo_TILsig failed PH assumption in interaction analysis on RFS.
-# Possibly due to the combined immune and fibrosis signals integrated in it.
-
-
+# # 3. Analysis summary
+# # ==============================================================================
 #
-# ==============================================================================
+# summarize_her2 <- function(x, prog = F){
+#   # x <- finher_her2$prog$DDFS
+#   # prog = T
+#
+#   x <- purrr::map(x,
+#                   function(xx, prog){
+#
+#                     if(prog){
+#
+#                       nme <- c("Variable", "HR", "Low95","Up95", "P", "P_adj", "Heterogeneity", "Ph_ok")
+#                       xx <- xx$main_effect[ , nme] %>%
+#                         dplyr::mutate( HR = str_c(round(HR, digits = 2),
+#                                                   " (",
+#                                                   round(Low95,digits=2), "-",
+#                                                   round(Up95,digits=2),
+#                                                   ")"),
+#                                        # Note, for prognostic model the CI is in HR
+#                                        Heterogeneity = str_c(round(Heterogeneity, digits=2))) %>%
+#                         dplyr::rename(Het = "Heterogeneity")
+#
+#                     } else {
+#
+#                       nme <- c("Variable", "HR", "Low95","Up95", "P", "P_adj", "Ph_ok")
+#                       xx <- xx$main_effect[ , nme] %>%
+#                         dplyr::mutate( HR = str_c(round(HR, digits = 2),
+#                                                   " (",
+#                                                   round(exp(Low95),digits=2), "-",
+#                                                   round(exp(Up95),digits=2),
+#                                                   ")"))
+#                       # Note, for interaction model the CI is in coef
+#
+#                     }
+#
+#                     xx <- xx %>%
+#                       dplyr::mutate(
+#                         P = str_c(round(P, digits=2)),
+#                         P_adj = str_c(round(P_adj, digits=2))
+#                       ) %>%
+#                       dplyr::select(-c(Low95,Up95))
+#                   },
+#                   prog)
+#
+#   return(x[[1]])
+#
+# }
+#
+# xout <- list()
+#
+# xout[["ddfs"]] <- summarize_her2(x = finher_her2$prog_individual.sig $DDFS, prog = T)
+# xout[["os"]] <- summarize_her2(x = finher_her2$prog_individual.sig$OS, prog = T)
+# xout[["rfs"]] <- summarize_her2(x = finher_her2$prog_individual.sig$RFS, prog = T)
+#
+# write_xlsx(xout, path = str_c(out_tables,"finher_her2_prognosis_individual.sig_summary.xlsx"))
+#
+#
+#
+# xout <- list()
+#
+# xout[["ddfs"]] <- summarize_her2(x = finher_her2$prog_pooled.sig $DDFS, prog = T)
+# xout[["os"]] <- summarize_her2(x = finher_her2$prog_pooled.sig$OS, prog = T)
+# xout[["rfs"]] <- summarize_her2(x = finher_her2$prog_pooled.sig$RFS, prog = T)
+#
+# write_xlsx(xout, path = str_c(out_tables,"finher_her2_prognosis_pooled.sig_summary.xlsx"))
+#
+#
+#
+# xout <- list()
+#
+# xout[["ddfs"]] <-  summarize_her2(x = finher_her2$inter.chemo_individual.sig$DDFS, prog = F)
+# xout[["os"]] <- summarize_her2(x = finher_her2$inter.chemo_individual.sig$OS, prog = F)
+# xout[["rfs"]] <- summarize_her2(x = finher_her2$inter.chemo_individual.sig$RFS, prog = F)
+#
+# write_xlsx(xout, path = str_c(out_tables,"finher_her2_chemo_interaction_individual.sig_summary.xlsx"))
+#
+#
+#
+# xout <- list()
+#
+# xout[["ddfs"]] <-  summarize_her2(x = finher_her2$inter.chemo_pooled.sig$DDFS, prog = F)
+# xout[["os"]] <- summarize_her2(x = finher_her2$inter.chemo_pooled.sig$OS, prog = F)
+# xout[["rfs"]] <- summarize_her2(x = finher_her2$inter.chemo_pooled.sig$RFS, prog = F)
+#
+# write_xlsx(xout, path = str_c(out_tables,"finher_her2_chemo_interaction_pooled.sig_summary.xlsx"))
+#
+#
+# # Note !!!!!!!:
+# # Only de-novo_TILsig failed PH assumption in interaction analysis on RFS.
+# # Possibly due to the combined immune and fibrosis signals integrated in it.
+#
+#
+# #
+# # ==============================================================================
 
 
 
@@ -716,11 +689,18 @@ write_xlsx(xout, path = str_c(out_tables,"finher_her2_chemo_interaction_pooled.s
 # 4. Save Robjects
 # ==============================================================================
 
-save(finher_her2, file = str_c(out_data,"finher_her2_v2.RData"))
+save(finher_her2, file = str_c(out_data,"finher_her2.RData"))
 
 #
 # ==============================================================================
 
 
 
+# Clear memory
+# ==============================================================================
+
+rm(clin_finher_finneo, finher_her2)
+
+#
+# ==============================================================================
 

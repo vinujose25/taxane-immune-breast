@@ -1,38 +1,65 @@
-# s1_manual_finher_cleaning.R
+# s2_finher_cleaning.R
 
 
 # What the script does?
 # >>>>>>>>>>>>>>>>>>>>>
-# Clean finher clinical nad expression data
+# Clean finher clinical and expression data
 
 
 
-# Script strucutre
+# Script structure
 # >>>>>>>>>>>>>>>>
 # 1. Load and prepare data
 # 2. Clinical data cleaning
 # 3. Summarize clinical dataset
-# 4. Expression data filtering
-# 5. Save filtered clinical and expression data
+# 4. Save filtered clinical and expression data
 
 
 # 1. Load and prepare data
 # ==============================================================================
 
-clin <- read_tsv(file = "data/finher_clin.tsv")
-expr <- read_tsv(file = "data/finher_expr_mas.tsv")
-annot <- read_tsv(file = "data/finher_expr_mas_annot.tsv")
+clin <- read_tsv(file = "data/finher_clin.tsv") # Private clinical data
+metadata <- read_tsv(file = "data/gse47994/gse47994_metadata.tsv") # inhouse - geo-id mapping
+expr <- read_tsv(file = "data/gse47994/GSE47994_reprocessed_sample_filtered/mas/expr_maxvar_combat_after_sample_and_pset_filtering.tsv")
+annot <- read_tsv(file = "data/gse47994/GSE47994_reprocessed_sample_filtered/mas/annot_maxvar_after_sample_and_pset_filtering.tsv")
 
+
+
+clin <- dplyr::left_join(
+  clin,
+  metadata %>%
+    dplyr::select(Sample_title, Sample_geo_accession, Filename) %>%
+    dplyr::mutate(CEL_filename = str_c(Filename, ".CEL.gz")),
+  by = "CEL_filename")
+
+
+# expr ordering sample names
+expr <- expr %>%
+  dplyr::rename(Probeset_Id = "ID_REF") %>%
+  dplyr::select(Probeset_Id, all_of(clin$Sample_geo_accession)) %>%
+  dplyr::rename_with(
+    ~purrr::map_chr(.x,
+                function(.x,map){
+                  if(.x %in% map$Sample_geo_accession){
+                    return(map$CEL_filename[which(.x == map$Sample_geo_accession)])
+                  }else(
+                    return(.x)
+                  )
+                }, map = clin)
+  )
+
+
+identical(names(expr)[-1], clin$CEL_filename) # TRUE
+
+# expr ordering gene names
 expr <- left_join(expr %>% dplyr::select(Probeset_Id), annot, by = "Probeset_Id") %>%
   left_join(expr, by = "Probeset_Id") %>%
   dplyr::select(-c("Probeset_Id", "Gene_Symbol")) %>%
   dplyr::rename(Ncbi_gene_id = "Entrez_Gene") %>%
   dplyr::mutate(Ncbi_gene_id = str_c("ncbi_", Ncbi_gene_id))
 
-identical(names(expr)[-1], clin$CEL_filename) # TRUE
-
 dim(clin)
-# [1] 300 77
+# [1] 300 80
 dim(expr)
 # [1] 3350  301
 dim(annot)
@@ -205,182 +232,24 @@ clin %>%
 # 10 TN          TN            NVB+noTRA+noHR    60
 
 
+clin %>%
+  dplyr::group_by(Subtype_IHC_2, Arm = str_c(Chemo)) %>%
+  dplyr::summarise(N = n())
 
-# HR-HER2+
-# >>>>>>>>
+#   Subtype_IHC_2 Arm       N
+# 1 HER2          DTX      87
+# 2 HER2          NVB      93
+# 3 TN            DTX      60
+# 4 TN            NVB      60
 
-#   Subtype_IHC Subtype_IHC_2 Arm                     N
-# 1 HR-HER2+    HER2          DTX+noTRA+noHR    27
-# 2 HR-HER2+    HER2          DTX+TRA+noHR      26
-# 3 HR-HER2+    HER2          NVB+noTRA+noHR    19
-# 4 HR-HER2+    HER2          NVB+TRA+noHR      17
-
-# DTX|NVB interaction
-# 1) FEC * DTX|NVB interaction
-# 2) FEC + TRA * DTX|NVB interaction
-# 3) FEC + stratified TRA * DTX|NVB interaction !!! all HR+HER2+##
-# TRA|noTRA interaction
-# 4) FEC + DTX * TRA|noTRA interaction !!! (Identical to GEO analysis, AAA+T * TRA|noTRA)
-# 5) FEC + NVB * TRA|noTRA interaction
-# 6) FEC + stratified DTX/NVB * TRA|noTRA interaction !!! all HR+HER2+
-
-
-
-
-# HR+HER2+
-# >>>>>>>>
-
-#   Subtype_IHC Subtype_IHC_2 Arm                     N
-# 5 HR+HER2+    HER2          DTX+noTRA+HR      18
-# 6 HR+HER2+    HER2          DTX+TRA+HR        16
-# 7 HR+HER2+    HER2          NVB+noTRA+HR      27
-# 8 HR+HER2+    HER2          NVB+TRA+HR        30
-
-# DTX|NVB interaction
-# 1) FEC + Hormone * DTX|NVB interaction
-# 2) FEC + Hormone + TRA * DTX|NVB interaction
-# 3) FEC + Hormone + stratified TRA * DTX|NVB interaction !!! all HR+HER2+
-# TRA|noTRA interaction
-# 3) FEC + Hormone + DTX * TRA|noTRA interaction
-# 4) FEC + Hormone + NVB * TRA|noTRA interaction
-# 5) FEC + Hormone + stratified DTX/NVB * TRA|noTRA interaction !!! all HR+HER2+
-
-
-
-
-# HER2+
-# >>>>>
-
-# Subtype_IHC Subtype_IHC_2 Arm                     N
-# 1 HR-HER2+    HER2          DTX+noTRA+noHR    27
-# 2 HR-HER2+    HER2          DTX+TRA+noHR      26
-# 3 HR-HER2+    HER2          NVB+noTRA+noHR    19
-# 4 HR-HER2+    HER2          NVB+TRA+noHR      17
-
-# 5 HR+HER2+    HER2          DTX+noTRA+HR      18
-# 6 HR+HER2+    HER2          DTX+TRA+HR        16
-# 7 HR+HER2+    HER2          NVB+noTRA+HR      27
-# 8 HR+HER2+    HER2          NVB+TRA+HR        30
-
-# DTX|NVB interaction
-# 1) FEC + stratified Hormone * DTX|NVB interaction
-# 2) FEC + stratified Hormone + TRA * DTX|NVB interaction
-# 3) FEC + (stratified Hormone*TRA) * DTX|NVB interaction !!! all HER2+
-# TRA|noTRA interaction
-# 3) FEC + stratified Hormone + DTX * TRA|noTRA interaction
-# 4) FEC + stratified Hormone + NVB * TRA|noTRA interaction
-# 5) FEC + (stratified Hormone*DTX/NVB) * TRA|noTRA interaction !!! all HER2+
-
-
-
-
-# TN
-# >>>
-
-# Subtype_IHC Subtype_IHC_2 Arm                     N
-# 9 TN          TN            DTX+noTRA+noHR    60
-# 10 TN          TN            NVB+noTRA+noHR    60
-
-
-
-# DTX|NVB interaction
-# 1) FEC * DTX|NVB interaction !!! Identical to GEO analysis, AAA * T|noT
-
-
-
-
-# TN + HER2+(HR-)
-# >>>>>>>>>>>>>>>
-
-#   Subtype_IHC Subtype_IHC_2 Arm                N
-# 1 HR-HER2+    HER2          DTX+noTRA+noHR    27
-# 2 HR-HER2+    HER2          DTX+TRA+noHR      26
-# 3 HR-HER2+    HER2          NVB+noTRA+noHR    19
-# 4 HR-HER2+    HER2          NVB+TRA+noHR      17
-
-# 9 TN          TN            DTX+noTRA+noHR    60
-# 10 TN          TN            NVB+noTRA+noHR    60
-
-
-# TN/HER2 interaction
-# 1) FEC + DTX * TN/HER2 interaction !!! Identical to GEO analysis, AAA + T * TN/HER2
-# 2) FEC + NVB * TN/HER2 interaction
-# 3) FEC + stratified DTX/NVB * TN/HER2 interaction !!!! all TN + HER2+(HR-)
-
-
-
-# TN + HER2+(HR+)
-# >>>>>>>>>>>>>>>
-
-#   Subtype_IHC Subtype_IHC_2 Arm                N
-# 5 HR+HER2+    HER2          DTX+noTRA+HR      18
-# 6 HR+HER2+    HER2          DTX+TRA+HR        16
-# 7 HR+HER2+    HER2          NVB+noTRA+HR      27
-# 8 HR+HER2+    HER2          NVB+TRA+HR        30
-
-# 9 TN          TN            DTX+noTRA+noHR    60
-# 10 TN          TN            NVB+noTRA+noHR    60
-
-
-# TN/HER2 interaction
-# 1) FEC + Hormone + DTX * TN/HER2 interaction
-# 2) FEC + Hormone +  NVB * TN/HER2 interaction
-# 3) FEC + Hormone +  stratified DTX/NVB * TN/HER2 interaction !!!! all TN + HER2+(HR+)
-
-
-
-
-# TN + HER2+
-# >>>>>>>>>>
-
-#   Subtype_IHC Subtype_IHC_2 Arm                N
-# 1 HR-HER2+    HER2          DTX+noTRA+noHR    27
-# 2 HR-HER2+    HER2          DTX+TRA+noHR      26
-# 3 HR-HER2+    HER2          NVB+noTRA+noHR    19
-# 4 HR-HER2+    HER2          NVB+TRA+noHR      17
-
-# 5 HR+HER2+    HER2          DTX+noTRA+HR      18
-# 6 HR+HER2+    HER2          DTX+TRA+HR        16
-# 7 HR+HER2+    HER2          NVB+noTRA+HR      27
-# 8 HR+HER2+    HER2          NVB+TRA+HR        30
-
-# 9 TN          TN            DTX+noTRA+noHR    60
-# 10 TN          TN            NVB+noTRA+noHR    60
-
-
-
-# TN/HER2 interaction (no TRA)
-# 1) FEC + DTX (HR-) * TN/HER2 interaction
-# 2) FEC + NVB (HR-) * TN/HER2 interaction
-
-# 3) FEC + DTX (HR+) * TN/HER2 interaction
-# 4) FEC + NVB (HR+) * TN/HER2 interaction
-
-# 1) FEC + DTX + stratified Hormone * TN/HER2 interaction
-# 2) FEC + NVB + stratified Hormone * TN/HER2 interaction
-
-# 3) FEC + (stratified Hormone * DTX/NVB) * TN/HER2 interaction !!!! all TN + HER2+(HR+)
-
-
-
-
-# Potential analyses in FinHER
-# >>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-# 1) DTX|NVB interaction
-# 2) TRA|noTRA interaction
-# 3) TN|HER2 interaction
 
 #
 # ==============================================================================
 
 
 
-# 5. Save filtered clinical and expression data
+# 4. Save filtered clinical and expression data
 # ==============================================================================
-
-# glimpse(clin)
-# expr[,1:5]
 
 clin_finher <- clin
 expr_finher <- expr
@@ -388,9 +257,19 @@ expr_finher <- expr
 save(clin_finher, file = str_c(out_data,"clin_finher.RData"))
 save(expr_finher, file = str_c(out_data,"expr_finher.RData"))
 
-rm(clin, expr)
+
 
 #
 # ==============================================================================
 
 
+
+# Clear memory
+# ==============================================================================
+
+rm(clin, clin_finher,
+   expr, expr_finher,
+   metadata, annot)
+
+#
+# ==============================================================================

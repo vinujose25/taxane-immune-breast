@@ -1,15 +1,16 @@
-# s7_supp_firth_finher_her2_v2.R
+# s7.3_supp_firth_finher_her2_v2.R
 
 
 # What the script does?
 # >>>>>>>>>>>>>>>>>>>>>
 #
-# Explore whether firth penalization reduces CI width
+# Explore whether "coxphf: Cox Regression with Firth's Penalized Likelihood" reduces CI width.
+# Firth's Penalization did not reduce CI width. !!!!!!!!!!!!
 
 
 
 
-# Script strucutre
+# Script structure
 # >>>>>>>>>>>>>>>>
 # 1. Load and format clinical data.
 # 2. Explore prognosis, chemo interaction, and herceptin interaction in HER2.
@@ -122,7 +123,9 @@ clin_finher_finneo <- clin_finher_finneo %>%
   ),
   ~(!is.na(.x)))
 
-# N = 170
+
+dim(clin_finher_finneo) # 10 with NAs
+# 170 119
 
 #
 # ==============================================================================
@@ -421,7 +424,7 @@ p <- ggplot(ggdf, aes(x = variable, y = value, group = group_var)) +
        subtitle = "FinHER HER2 prognostic models") +
   facet_wrap(~event, ncol = 1)
 
-pdf(file = str_c(out_figures,"Firth_vs_Std_COX-FinHER_HER2_Prognosis.pdf"))
+pdf(file = str_c(out_figures,"FinHER_HER2_Prognosis_Firth_vs_Std_COX.pdf"))
 print(p)
 dev.off()
 
@@ -438,7 +441,7 @@ p <- ggplot(ggdf, aes(x = variable, y = log(value), group = group_var)) +
        subtitle = "FinHER HER2 prognostic models") +
   facet_wrap(~event, ncol = 1)
 
-pdf(file = str_c(out_figures,"Firth_vs_Std_COX-FinHER_HER2_Prognosis_log.pdf"))
+pdf(file = str_c(out_figures,"FinHER_HER2_Prognosis_log_Firth_vs_Std_COX.pdf"))
 print(p)
 dev.off()
 
@@ -475,7 +478,7 @@ p <- ggplot(ggdf, aes(x = variable, y = value, group = group_var)) +
        subtitle = "FinHER HER2 interaction models") +
   facet_wrap(~event, ncol = 1)
 
-pdf(file = str_c(out_figures,"Firth_vs_Std_COX-FinHER_HER2_Interaction.pdf"))
+pdf(file = str_c(out_figures,"FinHER_HER2_Interaction_Firth_vs_Std_COX.pdf"))
 print(p)
 dev.off()
 
@@ -492,7 +495,7 @@ p <- ggplot(ggdf, aes(x = variable, y = log(value), group = group_var)) +
        subtitle = "FinHER HER2 interaction models") +
   facet_wrap(~event, ncol = 1)
 
-pdf(file = str_c(out_figures,"Firth_vs_Std_COX-FinHER_HER2_Interaction_log.pdf"))
+pdf(file = str_c(out_figures,"FinHER_HER2_Interaction_log_Firth_vs_Std_COX.pdf"))
 print(p)
 dev.off()
 
@@ -501,5 +504,13 @@ dev.off()
 # ==============================================================================
 
 
+
+# Clear memory
+# ==============================================================================
+
+rm(clin_finher_finneo, finher_her2)
+
+#
+# ==============================================================================
 
 
