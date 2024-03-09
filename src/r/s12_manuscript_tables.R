@@ -17,47 +17,6 @@ clin_finher <- clin_finher %>%
                                    Herceptin_original = "Herceptin"),
                    by = "CEL_filename" )
 
-clin_summary_table <- function(x, xvar, yvar = NA){
-  # x: tibble
-  # xvar: variable to be grouped
-  # yvar: variable on which split counts of xvar to be computed
-
-  # # Test data
-  # x =  clin_neoadj_finneo %>%
-  #   dplyr::mutate(Age_bin_50 = if_else(Age_bin_50 == "old", ">50","<=50") %>%
-  #                   factor(levels = c("<=50", ">50", NA)))
-  # xvar = "Age_bin_50"
-  # yvar = "Series_matrix_accession"
-
-  xx <- table(x[ ,xvar] %>% deframe(), rep("All", nrow(x)), useNA = "ifany")
-
-  if(!is.na(yvar)){
-
-    yy <- table(x[ ,c(xvar,yvar)], useNA = "ifany") # if NA present, new column will be introduced
-
-    if(identical(rownames(xx),rownames(yy))){
-      out <- cbind(tibble(Variable = xvar, Values = rownames(yy)),
-                   as.matrix.data.frame(xx), as.matrix.data.frame(yy))
-      names(out) <- c("Variable", "Values", "All", colnames(yy))
-
-      return(out %>% tibble())
-
-    } else{
-
-      return(NULL)
-    }
-
-  } else{
-    out <- cbind(tibble(Variable = xvar, Values = rownames(xx)),
-                 as.matrix.data.frame(xx))
-    names(out) <- c("Variable", "Values", "All")
-
-    return(out %>% tibble())
-  }
-
-
-}
-
 
 table1 <- rbind(
   # Age
@@ -164,9 +123,9 @@ table2 <- rbind(
     clin_summary_table(xvar = "Node", yvar = "Series_matrix_accession"),
   # Size
   clin_neoadj_finneo %>%
-    dplyr::mutate(Node = if_else((Size_cat == "T0" | Size_cat == "T1"), "T0-1", Size_cat) %>%
+    dplyr::mutate(Size = if_else((Size_cat == "T0" | Size_cat == "T1"), "T0-1", Size_cat) %>%
                     factor(levels = c("T0-1", "T2", "T3", "T4", NA))) %>%
-    clin_summary_table(xvar = "Node", yvar = "Series_matrix_accession"),
+    clin_summary_table(xvar = "Size", yvar = "Series_matrix_accession"),
   # ER
   clin_neoadj_finneo %>%
     dplyr::mutate(Er = Er %>%
@@ -200,6 +159,17 @@ table2 <- rbind(
                     factor(levels = c("No", "Yes", NA))) %>%
     clin_summary_table(xvar = "Response", yvar = "Series_matrix_accession")
 )
+
+
+# Order
+
+x <- table2 %>%
+  dplyr::filter(Variable == "Age_bin_50") %>%
+  dplyr::select(-c("Variable", "Values", "All")) %>%
+  purrr::map(~sum(.x)) %>% unlist() %>% sort(decreasing = T)
+
+table2 <- table2 %>%
+  dplyr::select(c("Variable", "Values", "All"), all_of(names(x)))
 
 
 write_tsv(table2, file = str_c(out_data, "Table2_geo_clinical_summary.tsv"))

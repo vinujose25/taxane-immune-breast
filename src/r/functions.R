@@ -1,6 +1,75 @@
 # functions.R
 
 
+# General functions
+# ==============================================================================
+
+
+# Note: Copied from treatment-curated-breast-dataset/src/r/functions.R
+# updated t_tibble()
+t_tibble <- function(
+    x,
+    names_x_desc = NULL
+){
+
+  # What this function does?
+  # >>>>>>>>>>>>>>>>>>>>>>>>
+  # Tranposes a gene expression tibble.
+  # By definition, row names are not recommanded for tibble, instead any
+  # rowname must be included as a column in the tibble. For instance the
+  # as_tibble() function has "rownames" option to give names for existing rownames
+  # so as to include the rownames as the first colum of a tibble. However,
+  # rownames are conventional and usually included in a tibble as the first column.
+  # In this case, the default transpose function may not work properly as
+  # transposing a tibble may cause data type conflicts and may convert the
+  # entrire colum of a transposed tibble as the with the type of first column of
+  # non-transposed tibble. This will be case with gene expression tibbles with
+  # first column as gene symbols, and column names are sample names.
+  # Note that this function is defined to use with gene expression tibbles.
+  # Gene expression tibbles have the identical data type for all columns except
+  # the first column representing rownames.
+
+  # input
+  # >>>>>
+  # x: A tibble to transpose. The 1st column is considered as rownames.
+  # names_x_desc: A character string that describes what names(x) represents.
+  #               This character string will be used as the name of the first
+  #               column of the trassposed tibble.
+
+  # output
+  # >>>>>>
+  # A transposed tibble
+
+
+  # Note: t(x) will set all data to single type
+
+  # If names_x_desc is NULL, it is set as the name of the 1st column of x
+  if (is.null(names_x_desc)) {
+    names_x_desc <- names(x)[1]
+  }
+
+  # Extract rownames of x. This will later used to set column names of t(x)
+  rownames_x <- x %>% dplyr::select(1) %>% tibble::deframe()
+
+
+  tx <- t(x %>% dplyr::select(-1))
+  colnames(tx) <- rownames_x
+
+  return(as_tibble(tx, rownames = names_x_desc))
+}
+
+
+#
+# ==============================================================================
+
+
+
+
+
+# GEO dataset filtering function
+# ==============================================================================
+
+
 filter_data <- function(
   x,
   type = "filter_data"
@@ -229,60 +298,15 @@ filter_data <- function(
 }
 
 
-
-# Note: Copied from treatment-curated-breast-dataset/src/r/functions.R
-# updated t_tibble()
-t_tibble <- function(
-  x,
-  names_x_desc = NULL
-){
-
-  # What this function does?
-  # >>>>>>>>>>>>>>>>>>>>>>>>
-  # Tranposes a gene expression tibble.
-  # By definition, row names are not recommanded for tibble, instead any
-  # rowname must be included as a column in the tibble. For instance the
-  # as_tibble() function has "rownames" option to give names for existing rownames
-  # so as to include the rownames as the first colum of a tibble. However,
-  # rownames are conventional and usually included in a tibble as the first column.
-  # In this case, the default transpose function may not work properly as
-  # transposing a tibble may cause data type conflicts and may convert the
-  # entrire colum of a transposed tibble as the with the type of first column of
-  # non-transposed tibble. This will be case with gene expression tibbles with
-  # first column as gene symbols, and column names are sample names.
-  # Note that this function is defined to use with gene expression tibbles.
-  # Gene expression tibbles have the identical data type for all columns except
-  # the first column representing rownames.
-
-  # input
-  # >>>>>
-  # x: A tibble to transpose. The 1st column is considered as rownames.
-  # names_x_desc: A character string that describes what names(x) represents.
-  #               This character string will be used as the name of the first
-  #               column of the trassposed tibble.
-
-  # output
-  # >>>>>>
-  # A transposed tibble
+#
+# ==============================================================================
 
 
-  # Note: t(x) will set all data to single type
-
-  # If names_x_desc is NULL, it is set as the name of the 1st column of x
-  if (is.null(names_x_desc)) {
-    names_x_desc <- names(x)[1]
-  }
-
-  # Extract rownames of x. This will later used to set column names of t(x)
-  rownames_x <- x %>% dplyr::select(1) %>% tibble::deframe()
 
 
-  tx <- t(x %>% dplyr::select(-1))
-  colnames(tx) <- rownames_x
 
-  return(as_tibble(tx, rownames = names_x_desc))
-}
-
+# Gene module related functions
+# ==============================================================================
 
 
 # Note: Copied from treatment-curated-breast-dataset/src/r/functions.R
@@ -690,6 +714,16 @@ validate_gene_modules <- function(
 }
 
 
+#
+# ==============================================================================
+
+
+
+
+
+# TILsig related functions
+# ==============================================================================
+
 
 tilsig_agreement <- function(x,y){
   xx = x %>% inner_join(y %>% dplyr::select(Ncbi_gene_id1, Direction), by = "Ncbi_gene_id1")
@@ -722,6 +756,15 @@ tilsig_print <- function(x, label = "sig", path = "./"){
               file = str_c(path, label,".txt"))
 }
 
+
+#
+# ==============================================================================
+
+
+
+
+# FinHER COX related function
+# ==============================================================================
 
 
 # Test finher adjuvant prognosis with heterogeneity assesed using cox interaction test.
@@ -892,91 +935,6 @@ get_std_firth_cox_out <- function(
 }
 
 
-# glm() and logistf() defult output
-get_std_firth_logist_out <- function(
-    formula_chr,
-    biomarker,
-    xdata # without NAs in model variables; coxphf() will throw error otherwise
-){
-
-  # # Test data
-  #  formula_chr = "Surv(OS_Time_Years, OS_Event ) ~ TIL + strata(Hormone, Herceptin, Chemo)"
-  #  xdata = clin_finher_finneo %>%
-  #    dplyr::filter(!(is.na(TIL))) # 118, before filtering 120
-  #  biomarker = "TIL"
-  # formula_chr = "Response ~ scaled_Denovo_TILsig + Arm_consolidated + Series_matrix_accession"
-  # biomarker = "scaled_Denovo_TILsig"
-  # xdata = clin_neoadj_finneo %>%
-  #   dplyr::filter(Subtype_ihc == "TN")
-
-  m1.std <- glm(
-    formula =as.formula(formula_chr),
-    data = xdata,
-    family = "binomial"
-  )
-
-
-  m1.firth <- logistf(
-    formula = as.formula(formula_chr),
-    data = xdata,
-    # maxstep = 0.1,
-    maxit = 1000
-  )
-
-
-  # subset standard cox out
-
-  nme.std <- rownames(summary(m1.std)$coefficients)
-  idx.std <- nme.std[str_detect(nme.std, biomarker)]
-
-  x.std <- cbind(
-    summary(m1.std)$coefficients[idx.std, c("Estimate", "Std. Error", "z value", "Pr(>|z|)") , drop=F],
-    confint.default(m1.std)[idx.std, c("2.5 %", "97.5 %"), drop = F]
-    # estimate and CI in log scale
-  )
-  colnames(x.std) <- c("coef", "se_coef", "z", "p","ci.lo", "ci.up")
-
-
-  x.std <- cbind(
-    x.std[,"coef", drop = F],
-    or = x.std[,"coef"] %>% exp(),
-    x.std[, c("se_coef", "z", "p"), drop = F],
-    exp(x.std[,c("ci.lo", "ci.up"), drop = F])
-  )
-
-  # subset firth cox out
-
-  nme.firth <- names(m1.firth$coefficients)
-  idx.firth <- nme.std[str_detect(nme.std, biomarker)]
-
-  x.firth <- cbind(
-    as.matrix(m1.firth$coefficients[idx.firth]),
-    as.matrix(m1.firth$coefficients[idx.firth] %>% exp()),
-    as.matrix(m1.firth$prob[idx.firth]),
-    as.matrix(m1.firth$ci.lower[idx.firth] %>% exp()),
-    as.matrix(m1.firth$ci.upper[idx.firth] %>% exp())
-    # estimate and CI in log scale
-  )
-
-  colnames(x.firth) <- c("coef", "or", "p", "ci.lo", "ci.up")
-  colnames(x.firth) <- str_c("firth_", colnames(x.firth))
-
-
-
-  # merge and format output
-
-  x <- cbind(x.std, x.firth)
-  x <- bind_cols(
-    tibble(variable = rownames(x)),
-    as_tibble(x)
-  )
-
-  return(x)
-
-}
-
-
-
 
 # Test finher adjuvant prognosis with heterogeneity assesed using cox interaction test.
 get_adj_inter <- function(
@@ -1086,6 +1044,244 @@ get_adj_inter <- function(
 }
 
 
+
+summarise_interaction_cox <- function(
+    m1,
+    m0,
+    test_var,
+    inter_var
+){
+
+  # Funtion to extract and summarize interaction effect ready to plot
+  # Note that this function is identical to summarise_interaction(), except
+  # for columnnames of cox model output.
+
+  # m1: full model with interaction term
+  # m0: null model without interaction term
+  # test_var: variable tested for interaction effect (signature)
+  # inter_var: variable interacting with test var
+  # Note that this script expects the "test_var" to be a continuous variable,
+  # and the "inter_var" to be a factor or a character vector that can be
+  # coerased to be a factor.
+
+  # # Test data
+  # m0 = m0
+  # m1 = m1
+  # test_var = biomarker
+  # inter_var = interaction_variable
+
+
+  # interaction effect summary
+  # >>>>>>>>>>>>>>>>>>>>>>>>>>
+  m1_coef <- summary(m1)$coefficients
+  m1_ci <- confint.default(m1)
+
+
+  # subsetting relevent terms
+  # >>>>>>>>>>>>>>>>>>>>>>>>>
+  # (i.e. test_var (sig) and terms interacting with test_var)
+
+  idx <- rownames(m1_ci)[str_detect(rownames(m1_ci), test_var)] # this will select Sig and Sig:Arm2
+  # Note
+  # idx[1] : reference arm
+  # The remaining terms are interaction terms
+
+
+  # Updating estimate, std.err and ci for all relevant rows except the 1st row
+  # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+  if (identical(rownames(m1_ci), rownames(m1_coef))) {
+
+    x <- cbind(m1_coef[idx, ], m1_ci[idx, ])
+
+    # Update wald p with loglikelihood p
+    p <- lrtest(m0, m1)$"Pr(>Chisq)" %>% na.omit() %>% as.numeric()
+
+    # Obsolete code logic
+    # Both pvalues in x is set to p, to aid in plotting
+    # x[, "Pr(>|z|)"] <- p #
+
+    # New code logic
+    # The pvalues can be replicated at any point later in the script,
+    # but deletion is difficult. Hence likilihoog pvalue is set for reference term
+    x[, "Pr(>|z|)"] <- NA # Resetting original pvalues
+    x[idx[1], "Pr(>|z|)"] <- p # Setting likihood ratio test interaction pvalue
+
+
+    # Updating estimate, std.err and ci for all relevant rows except the 1st row (reference row)
+
+    # The first row is the effect from reference arm.
+    # All other rows represents change with respect to the reference row
+    # All other rows required to adjust it effect for independet comparison in plots
+    # Adjustment 1: add reference effect to each other row's effect
+    # Adjustment 2: adjust other row's standard error
+    # Adjustment 3: adjust other row's 95% ci
+
+    for(i in idx[-1]){
+
+      # Note: idx[-1] suggest all terms excluding reference term/arm
+
+      # Update coef(Log-HR)
+      # Interaction term contains change from reference
+      # To get actual coef(Log-HR), add interaction coef(Log-HR)
+      # to reference Estiate(Log-OR)
+      x[i, "coef"] <- sum(x[c(idx[1], i), "coef"]) # idx[1] represents reference arm
+      # update exp(coef) ~ HR
+      x[i, "exp(coef)"] <- exp(x[i, "coef"])
+
+      # Note in the following code descriptions, coef ~ Estimate(Log-OR).
+      # To get CI of sum of coefs find Std.Error of sum of coefs
+      # Std.Error of sum of coefs: sqrt( sum(coef variances) + 2 * their covariance)
+      # Sum of variances reference from wikipedia, search term: "Variance"
+      # Also see:
+      # https://stats.stackexchange.com/questions/401439/how-to-calculate-treatment-effect-and-its-confidence-interval-for-subgroups-in-a
+      se <- sqrt(
+        sum(x[c(idx[1], i), "se(coef)"] ^ 2) +
+          (2 * vcov(m1)[idx[1], i])
+      )
+      x[i, "se(coef)"] <- se
+      x[i, "2.5 %"] <- x[i, "coef"] - (1.96 * se)
+      x[i, "97.5 %"] <- x[i, "coef"] + (1.96 * se)
+
+    }
+
+  } else {
+    # As an error catching logic
+    x <- rep(NA, 6)
+    names(x) = c("coef", "exp(coef)", "se(coef)", "z", "Pr(>|z|)", "2.5 %", "97.5 %")
+    # vector names used in following code
+  }
+
+
+  # Appending reference arm detials to rownames(x)[1]
+  non_ref_arm <- grep(x = colnames(m1$x), pattern = ":", value = T)
+  non_ref_arm <- str_split_fixed(string = non_ref_arm, pattern = ":", n = 2)[,2]
+
+  ref_arm <- setdiff(
+    unique(m1$model[, inter_var]),
+    str_replace(string = non_ref_arm, pattern = inter_var, replacement = "")
+  )
+  ref_arm <- str_c(inter_var, ref_arm)
+
+  if (str_detect(rownames(x)[1], ":")) {
+    # Making sure the 1st row is reference row.
+    # For reference row ":" is not present.
+    stop("Error in interaction summary preparation.")
+  } else {
+    rownames(x)[1] <- str_c(rownames(x)[1], ":", ref_arm)
+  }
+
+
+
+  x %>%
+    as_tibble(rownames = "Module_name") %>%
+    dplyr::rename(
+      Exp_coef = "exp(coef)",
+      Std_error = "se(coef)",
+      Z_value = "z",
+      P = "Pr(>|z|)",
+      L95 = "2.5 %", # coef 95% CI
+      U95 = "97.5 %" # coef 95% CI
+    ) %>%
+    dplyr::rename_all(~str_to_title(.x))
+
+} # end of fun
+
+
+
+#
+# ==============================================================================
+
+
+
+
+
+# GEO logistic regression related function
+# ==============================================================================
+
+
+# glm() and logistf() defult output
+get_std_firth_logist_out <- function(
+    formula_chr,
+    biomarker,
+    xdata # without NAs in model variables; coxphf() will throw error otherwise
+){
+
+  # # Test data
+  #  formula_chr = "Surv(OS_Time_Years, OS_Event ) ~ TIL + strata(Hormone, Herceptin, Chemo)"
+  #  xdata = clin_finher_finneo %>%
+  #    dplyr::filter(!(is.na(TIL))) # 118, before filtering 120
+  #  biomarker = "TIL"
+  # formula_chr = "Response ~ scaled_Denovo_TILsig + Arm_consolidated + Series_matrix_accession"
+  # biomarker = "scaled_Denovo_TILsig"
+  # xdata = clin_neoadj_finneo %>%
+  #   dplyr::filter(Subtype_ihc == "TN")
+
+  m1.std <- glm(
+    formula =as.formula(formula_chr),
+    data = xdata,
+    family = "binomial"
+  )
+
+
+  m1.firth <- logistf(
+    formula = as.formula(formula_chr),
+    data = xdata,
+    # maxstep = 0.1,
+    maxit = 1000
+  )
+
+
+  # subset standard cox out
+
+  nme.std <- rownames(summary(m1.std)$coefficients)
+  idx.std <- nme.std[str_detect(nme.std, biomarker)]
+
+  x.std <- cbind(
+    summary(m1.std)$coefficients[idx.std, c("Estimate", "Std. Error", "z value", "Pr(>|z|)") , drop=F],
+    confint.default(m1.std)[idx.std, c("2.5 %", "97.5 %"), drop = F]
+    # estimate and CI in log scale
+  )
+  colnames(x.std) <- c("coef", "se_coef", "z", "p","ci.lo", "ci.up")
+
+
+  x.std <- cbind(
+    x.std[,"coef", drop = F],
+    or = x.std[,"coef"] %>% exp(),
+    x.std[, c("se_coef", "z", "p"), drop = F],
+    exp(x.std[,c("ci.lo", "ci.up"), drop = F])
+  )
+
+  # subset firth cox out
+
+  nme.firth <- names(m1.firth$coefficients)
+  idx.firth <- nme.std[str_detect(nme.std, biomarker)]
+
+  x.firth <- cbind(
+    as.matrix(m1.firth$coefficients[idx.firth]),
+    as.matrix(m1.firth$coefficients[idx.firth] %>% exp()),
+    as.matrix(m1.firth$prob[idx.firth]),
+    as.matrix(m1.firth$ci.lower[idx.firth] %>% exp()),
+    as.matrix(m1.firth$ci.upper[idx.firth] %>% exp())
+    # estimate and CI in log scale
+  )
+
+  colnames(x.firth) <- c("coef", "or", "p", "ci.lo", "ci.up")
+  colnames(x.firth) <- str_c("firth_", colnames(x.firth))
+
+
+
+  # merge and format output
+
+  x <- cbind(x.std, x.firth)
+  x <- bind_cols(
+    tibble(variable = rownames(x)),
+    as_tibble(x)
+  )
+
+  return(x)
+
+}
 
 
 estimate_prog_heterogenity <- function(
@@ -1323,382 +1519,890 @@ summarise_interaction <- function(
 
 
 
-summarise_interaction_cox <- function(
-  m1,
-  m0,
-  test_var,
-  inter_var
-){
+#
+# ==============================================================================
 
-  # Funtion to extract and summarize interaction effect ready to plot
-  # Note that this function is identical to summarise_interaction(), except
-  # for columnnames of cox model output.
 
-  # m1: full model with interaction term
-  # m0: null model without interaction term
-  # test_var: variable tested for interaction effect (signature)
-  # inter_var: variable interacting with test var
-  # Note that this script expects the "test_var" to be a continuous variable,
-  # and the "inter_var" to be a factor or a character vector that can be
-  # coerased to be a factor.
+
+
+
+# FinHER plots
+# ==============================================================================
+
+
+plot_finher_km_main <- function(
+    dat_km,
+    event_var,
+    time_var,
+    prefix){
+
+  # dat_km = dat_km
+  # event_var = "DDFS_Event"
+  # time_var = "DDFS_Time_Years"
+  # prefix = "DDFS"
+
+  # Model fitting
+  km_fit = survminer::surv_fit(
+    # as.formula(str_c("Surv(", time_var, ",", event_var, ") ~ Score")),
+    # as.formula(str_c("Surv(", time_var, ",", event_var, ") ~ Chemo")),
+    as.formula(str_c("Surv(", time_var, ",", event_var, ") ~ Cat")),
+    group.by = "Subgroup", # var in data_km
+    data = as.data.frame(dat_km)
+  )
+
+  # names(km_fit) will be used as title by ggsurvplot()
+  names(km_fit) = str_split_fixed(
+    str_split_fixed(names(km_fit), "::", 2)[ ,1],
+    "\\.",
+    2)[ ,2]
+
+
+
+  # col_pal <- list()
+  # col_pal[["Dark_red"]] <- "#e41a1c" #"#67001f"
+  # col_pal[["Light_red"]] <- "#fb9a99" #"#e41a1c"
+  # col_pal[["Dark_blue"]] <- "#377eb8" #"#053061"
+  # col_pal[["Light_blue"]] <- "#a6cee3" #"#377eb8"
+
+
+
+
+  km_fig <- ggsurvplot(
+    fit = km_fit,
+    pval = T,
+    # pval.method = T,
+    risk.table = T,
+    newpage = F,
+    # palette  = c(col_pal$Dark_red, col_pal$Light_red,
+    #              col_pal$Dark_blue, col_pal$Light_blue),
+    palette  = c(
+      # "#e41a1c", #"#000000", #"black" DTX - high
+      # "#67001f", #"red" DTX - low
+      # "#377eb8", # blue NVB - High
+      # "#053061" #"#bdbdbd" #"gray" NVB - low
+      "#e41a1c", #"#000000", #"black" DTX - high
+      "#f4a582", #"red" DTX - low
+      "#377eb8", # blue NVB - High
+      "#92c5de" #"#bdbdbd" #"gray" NVB - low
+    ),
+    xlab = "Years",
+    ylab = str_c(prefix, " probability"),
+    break.time.by = 1,
+    xlim = c(0,6),
+    legend.title = "",
+
+    risk.table.title = element_blank(),
+    risk.table.fontsize = 3,
+    risk.table.y.text.col = T, # colour risk table text annotations.
+    risk.table.y.text = T,     # show bars instead of names in text annotations
+    # in legend of risk table
+    risk.tables.col = "Score",
+
+    ggtheme = theme_bw() +
+      theme(panel.grid = element_blank(),
+            plot.margin = margin(l=1, r=1, unit = "lines"),
+            panel.spacing.y = unit(0,"lines"),
+            axis.title.x.bottom = element_text(margin = margin()),
+            # axis.title.y.left = element_text(vjust = -4),
+            axis.title.y.left = element_text(vjust = 0.5),
+            plot.title = element_text(vjust = 0, hjust = .5, face = "bold"),
+            legend.direction = "vertical"),
+
+    tables.theme = theme_cleantable() +
+      theme(
+        axis.title.x.bottom = element_blank()
+        # axis.title.x.bottom = element_text(color = "White")
+      )
+  )
+
+
+  km_fig_legend <- get_legend(km_fig[[1]])
+  # grid.draw(km_fig_legend)
+
+  # Removing legends
+  km_fig <- purrr::map(km_fig,
+                       function(x){
+                         x + guides(color = "none")
+                       })
+
+  # arrange_ggsurvplots() only support arranging by column.
+  # Rather than setting factor levels it easy to rearrange the list
+  # km_fig <- km_fig[ c("Immune1", "Tcell","Interferon1", "TIL") ]
+
+  # km_fig <- km_fig[c("DTX*Immune1", "NVB*Immune1",
+  #                    "DTX*Interferon1","NVB*Interferon1",
+  #                    "DTX*Tcell", "NVB*Tcell",
+  #                    "DTX*TIL", "NVB*TIL" ) ]
+
+  # km_fig <- km_fig[c("DTX*TIL", "DTX*Denovo_TILsig",
+  #                    "DTX*Denovo_Immune", "DTX*Denovo_ECM",
+  #
+  #                    "NVB*TIL", "NVB*Denovo_TILsig",
+  #                    "NVB*Denovo_Immune", "NVB*Denovo_ECM") ]
+
+  # km_fig <- km_fig[c("TIL-High", "Denovo_TILsig-High",
+  #                    "Denovo_Immune-High", "Denovo_ECM-High",
+  #
+  #                    "TIL-Low", "Denovo_TILsig-Low",
+  #                    "Denovo_Immune-Low", "Denovo_ECM-Low")]
+
+  km_fig <- km_fig[c("TIL", "Denovo_Immune",
+                     "Denovo_TILsig","Denovo_ECM")]
+
+  zz <- arrange_ggsurvplots(
+    x = km_fig, print = F,
+    ncol = 2,
+    # nrow = 4,
+    nrow = 2,
+    surv.plot.height = .75,
+    risk.table.height = .25,
+    newpage = F,
+    byrow =T
+  )
+  pdf(file = paste0(out_figures, "finher_km_", prefix, "-MTA-immune_interaction.pdf"),
+      width = 7.5, height = 8)
+  # png(filename = paste0(out_figures, "finher_km_", prefix, ".png"),
+  #     width = 7.5, height = 7, units = "in", res = 300)
+  print(zz)
+  dev.off()
+
+
+  # Risk table is text annotated; no need of legend
+
+  # pdf(file = paste0(out_figures, "finher_km_", prefix, "legend.pdf"),
+  #     width = 1.85, height = 1.25)
+  # grid.draw(km_fig_legend)
+  # dev.off()
+
+}
+
+
+
+plot_finher_km_supp <- function(
+    dat_km,
+    event_var,
+    time_var,
+    prefix){
+
+  # dat_km = dat_km
+  # event_var = "DDFS_Event"
+  # time_var = "DDFS_Time_Years"
+  # prefix = "DDFS"
+
+
+  # Model fitting
+  km_fit = survminer::surv_fit(
+    as.formula(str_c("Surv(", time_var, ",", event_var, ") ~ Cat")),
+    group.by = "Subgroup", # var in data_km
+    data = as.data.frame(dat_km)
+  )
+
+  # names(km_fit) will be used as title by ggsurvplot()
+  names(km_fit) = str_split_fixed(
+    str_split_fixed(names(km_fit), "::", 2)[ ,1],
+    "\\.",
+    2)[ ,2]
+
+
+
+  # col_pal <- list()
+  # col_pal[["Dark_red"]] <- "#e41a1c" #"#67001f"
+  # col_pal[["Light_red"]] <- "#fb9a99" #"#e41a1c"
+  # col_pal[["Dark_blue"]] <- "#377eb8" #"#053061"
+  # col_pal[["Light_blue"]] <- "#a6cee3" #"#377eb8"
+
+
+
+
+  km_fig <- ggsurvplot(
+    fit = km_fit,
+    pval = T,
+    # pval.method = T,
+    risk.table = T,
+    newpage = F,
+    # palette  = c(col_pal$Dark_red, col_pal$Light_red,
+    #              col_pal$Dark_blue, col_pal$Light_blue),
+    palette  = c(
+      # "#000000", #"black",
+      # "#404040", #"gray"
+      # "#ca0020" # red
+      # "#bdbdbd" #"gray"
+      "#e41a1c", #"#000000", #"black" DTX - high
+      "#f4a582", #"red" DTX - low
+      "#377eb8", # blue NVB - High
+      "#92c5de" #"#bdbdbd" #"gray" NVB - low
+    ),
+    xlab = "Years",
+    ylab = str_c(prefix, " probability"),
+    break.time.by = 1,
+    xlim = c(0,6),
+    legend.title = "",
+
+    risk.table.title = element_blank(),
+    risk.table.fontsize = 3,
+    risk.table.y.text.col = T, # colour risk table text annotations.
+    risk.table.y.text = T,     # show bars instead of names in text annotations
+    # in legend of risk table
+    risk.tables.col = "Score",
+
+    ggtheme = theme_bw() +
+      theme(panel.grid = element_blank(),
+            plot.margin = margin(l=1, r=1, unit = "lines"),
+            panel.spacing.y = unit(0,"lines"),
+            axis.title.x.bottom = element_text(margin = margin()),
+            # axis.title.y.left = element_text(vjust = -4),
+            axis.title.y.left = element_text(vjust = 0.5),
+            plot.title = element_text(vjust = 0, hjust = .5, face = "bold"),
+            legend.direction = "vertical"),
+
+    tables.theme = theme_cleantable() +
+      theme(
+        axis.title.x.bottom = element_blank()
+        # axis.title.x.bottom = element_text(color = "White")
+      )
+  )
+
+
+  km_fig_legend <- get_legend(km_fig[[1]])
+  # grid.draw(km_fig_legend)
+
+  # Removing legends
+  km_fig <- purrr::map(km_fig,
+                       function(x){
+                         x + guides(color = "none")
+                       })
+
+  # arrange_ggsurvplots() only support arranging by column.
+  # Rather than setting factor levels it easy to rearrange the list
+
+  km_fig <- km_fig[
+    c( # page 1
+      "Pooled_Immune", "Pooled_Fibrosis",
+      "Pooled_Interferon", "Pooled_Cholesterol",
+
+      # page 2
+      "Hamy2016_Immune", "Gruosso2019_Interferon",
+      "Yang2018_Immune","Farmer2009_MX1",
+
+      #page 3
+      "Hamy2016_Interferon", "Hamy2016_Ecm",
+      "Nirmal2018_Interferon", "Naba2014_Ecmcore",
+
+      # page 4
+      "Triulzi2013_Ecm", "Pooled_Immune",
+      "Sorrentino2014_Chol", "Pooled_Immune"
+    )
+  ]
+
+  zz <- arrange_ggsurvplots(
+    x = km_fig, print = F,
+    ncol = 2,
+    nrow = 2,
+    surv.plot.height = .75,
+    risk.table.height = .25,
+    newpage = T,
+    byrow =T
+  )
+  pdf(file = paste0(out_figures, "finher_km_", prefix, "-MTA-immune_interaction_supp.pdf"),
+      width = 7.5, height = 8)
+  print(zz)
+  dev.off()
+}
+
+
+
+plot_finher_mta_interaction <- function(
+    tn_cox_sum,
+    her2_cox_sum,
+    event_type,
+    inner_text_size,
+    outer_text_size,
+    color = NULL,
+    prefix,
+    width,
+    height){
+
+
+  # Function for plotting MTA interaction plot (A:TN, B:HER2)
+
+
+  #   # Test data
+  #   tn_cox_sum <- finher_tn
+  #   her2_cox_sum <- finher_her2
+  #   event_type <- "DDFS"
+  #   color = NULL
+  #   inner_text_size = 2.75
+  #   outer_text_size = 10
+  #   prefix = str_c(out_figures,"finher_mta_inter")
+  #   width = 7.5
+  #   height = 8.5
+
+  if(is.null(color)){
+    color <- c(NVB = "#377eb8", # blue
+               DTX = "#e41a1c") # red
+
+    # https://colorbrewer2.org/#type=qualitative&scheme=Set1&n=9
+  }
+
+
+
+  # Common theme
+  th_finher <- theme(
+    text = element_text(size = outer_text_size),
+    axis.text.x.bottom = element_text(color = "black"),
+    axis.title.y = element_blank(),
+    # strip.background = element_blank(),
+    # strip.text = element_blank(),
+    strip.text.x = element_blank(),
+    panel.grid = element_blank(),
+    # to adjust space between facet panels
+    panel.spacing.y = unit(x = 2, units = "pt")
+  )
+
+
+
+  cox_sum <- purrr::map(
+    list(
+      tn = tn_cox_sum[["inter.chemo"]][[event_type]]$main_effect,
+      her2 = her2_cox_sum[["inter.chemo"]][[event_type]]$HER2$main_effect
+    ),
+    function(x){
+      x %>%
+        dplyr::mutate(
+          HR = HR %>% round(digits=2),
+          Low95 = exp(Low95) %>% round(digits=2),
+          Up95 = exp(Up95) %>% round(digits=2),
+          HR_text = str_c(HR,"(",Low95," to ",Up95,")"),
+          P_text = str_c(
+            if_else(P < 0.001,"<.001", round(P, digits=3) %>% as.character()),
+            "(",
+            if_else(is.na(P_adj),
+                    "NA",
+                    if_else(P_adj < 0.001,"<.001", round(P_adj,digits=3) %>% as.character())
+            ),
+            ")"),
+          P_text = if_else(is.na(P_text), "", P_text),
+
+
+          Variable = str_split_fixed(string = Variable, pattern = ":", n = 2)[, 1] %>%
+            str_replace("scaled_",""),
+
+          # grouping modules
+          Variable_class = case_when(
+            Variable == "TIL" ~ "H&E",
+
+            str_detect(Variable, "Denovo") ~ "De-novo",
+            str_detect(Variable, "Pooled") ~ "Published-pooled",
+            str_detect(Variable, "MCPcounter") ~ "Cell",
+
+            Variable == "Hamy2016_Immune" ~ "Immune",
+            Variable == "Yang2018_Immune" ~ "Immune",
+
+            Variable == "Gruosso2019_Interferon" ~ "Interferon",
+            Variable == "Farmer2009_MX1" ~ "Interferon",
+            Variable == "Hamy2016_Interferon" ~ "Interferon",
+            Variable == "Nirmal2018_Interferon" ~ "Interferon",
+
+
+            Variable == "Hamy2016_Ecm" ~ "Fibrosis",
+            Variable == "Naba2014_Ecmcore" ~ "Fibrosis",
+            Variable == "Triulzi2013_Ecm" ~ "Fibrosis",
+
+            Variable == "Sorrentino2014_Chol" ~ "Chol.", #"Cholesterol"
+
+            TRUE ~ "Unknown"
+          ) %>%
+            factor(
+              levels = c(
+                "H&E", "De-novo",
+                "Immune", "Interferon", "Chol.", "Fibrosis",
+                "Published-pooled", "Cell")
+            ),
+
+          Variable =  Variable %>%
+            str_replace("Denovo","") %>%
+            str_replace("Pooled","") %>%
+            str_replace("MCPcounter","") %>%
+
+            str_replace("Hamy2016_Immune","Hamy2016") %>%
+            str_replace("Yang2018_Immune","Yang2018") %>%
+
+            str_replace("Gruosso2019_Interferon","Gruosso2019") %>%
+            str_replace("Farmer2009_MX1","Farmer2009") %>%
+            str_replace("Hamy2016_Interferon","Hamy2016") %>%
+            str_replace("Nirmal2018_Interferon","Nirmal2018") %>%
+
+            str_replace("Hamy2016_Ecm","Hamy2016") %>%
+            str_replace("Naba2014_Ecmcore","Naba2014") %>%
+            str_replace("Triulzi2013_Ecm","Triulzi2013") %>%
+
+            str_replace("Sorrentino2014_Chol","Sorrentino2014") %>%
+
+            str_replace("Tcell","T.Cell") %>%
+            str_replace("B.Lineage","B.Cell") %>%
+            str_replace("Monocytic.Lineage","Monocyte") %>%
+            str_replace("Myeloid.Dendritic","M.Dendritic") %>%
+            # Endothelial
+            str_replace("Fibroblasts","Fibroblast") %>%
+
+            str_replace("_","") %>%
+
+            factor(levels = c(
+
+              # H&E
+              "TIL",
+
+              # denovo: "TILsig", "Immune","ECM",
+              # pooled: "Immune", "Interferon", "Cholesterol", "Fibrosis",
+
+              # denovo + pooled
+              "TILsig", "Immune","ECM", "Interferon", "Cholesterol", "Fibrosis",
+
+              # immune: "Hamy2016","Yang2018",
+              # interferon: "Gruosso2019", "Farmer2009", "Hamy2016", "Nirmal2018",
+              # cholesterol:"Sorrentino2014",
+              # fibrosis: "Hamy2016", "Naba2014", "Triulzi2013",
+
+              # immune + interferon + cholesterol + fibrosis
+              "Gruosso2019", "Farmer2009", "Hamy2016", "Nirmal2018",
+              "Yang2018",
+              "Naba2014", "Triulzi2013",
+              "Sorrentino2014",
+
+              # cell
+              "T.Cell", "Cyto.Lympho", "B.Cell", "NK.Cell",
+              "Monocyte", "M.Dendritic", "Neutrophil",
+              "Endothelial", "Fibroblast"
+
+            ) %>% rev()
+            ),
+
+
+          Therapy_class = str_split_fixed(Therapy, ":", n = 2)[ , 2],
+          Therapy_class = str_replace(Therapy_class, "Chemo", "") %>%
+            factor(levels = c("NVB","DTX"))
+        ) %>%
+        dplyr::select(HR, Low95, Up95, HR_text, P_text, Variable, Variable_class, Therapy_class, Subtype)
+    }
+  )
+
+  p_forest <- purrr::map(
+    cox_sum,
+    function(x){
+      x %>%
+        ggplot() +
+        geom_point(aes(x = log(HR), y = Variable, color = Therapy_class, group = Therapy_class),
+                   position = ggstance::position_dodgev(height = .75)) +
+        geom_errorbarh(aes(xmin = log(Low95), xmax = log(Up95), y = Variable, color = Therapy_class, group = Therapy_class),
+                       position = ggstance::position_dodgev(height = .75),
+                       height = .1) +
+        scale_x_continuous(breaks = scales::pretty_breaks(n = 4)) +
+        scale_color_manual(values = color) +
+        guides(color = "none") +
+        geom_vline(xintercept = 0, linetype = "dashed") +
+        facet_grid(facets = Variable_class ~ 1,
+                   switch = "y",
+                   scales = "free_y",
+                   space = "free_y") +
+        theme_bw() +
+        theme(
+          # to manage space in ggarrage()
+          plot.margin = margin(t = 5.5, r = 0.1, b = 5.5, l = 5.5, unit = "pt")
+          # plot.margin = margin(t = 5.5, r = 5.5, b = 5.5, l = 5.5, unit = "pt") # default margin
+        )
+    })
+
+
+
+  p_annot <- purrr::map(
+    cox_sum,
+    function(x){
+      x %>%
+        tidyr::gather("key", "value", HR_text, P_text) %>%
+        # tidyr::gather("key", "value", HR_text, P_text, Het_text) %>%
+        dplyr::mutate(key = purrr::map_chr(key,
+                                           ~switch(.x,
+                                                   HR_text = "HR^a(95%CI)",
+                                                   # HR_text = expression("HR"^a*"(95%CI) "),
+                                                   P_text = "P(Padj^b)",
+                                                   Het_text= "Q(P)/I^2")) %>%
+                        factor(levels = c("HR^a(95%CI)","P(Padj^b)","Q(P)/I^2"),
+                               # labels = c(str_c("HR",supsc('a'),"(95%CI)"),
+                               #            str_c("P(Padj",supsc('b'),")"),
+                               #            str_c("Q(P)/I",supsc('2')))
+                               labels = c(expression("HR"^a*"(95%CI) "),
+                                          expression("P(Padj"^b*") "),
+                                          expression("Q(P)/I"^2))
+                        )
+        ) %>%
+        ggplot() +
+        geom_text(aes(x = key, y = Variable, label = value, color = Therapy_class, group = Therapy_class),
+                  position = ggstance::position_dodgev(height = .75),
+                  size = inner_text_size) +
+        scale_color_manual(values = color) +
+        scale_x_discrete(labels = ~parse(text = .x)) +
+        # Ref: https://stackoverflow.com/questions/73014834/how-to-create-subscripts-in-the-names-of-variables-in-r
+        guides(color = "none") +
+        facet_grid(facets = Variable_class ~ 1,
+                   switch = "y",
+                   scales = "free_y",
+                   space = "free_y") +
+        theme_bw() +
+        theme(
+          axis.text.y.left = element_blank(),
+          axis.ticks.y.left = element_blank(),
+          # to manage space in ggarrage()
+          plot.margin = margin(t = 5.5, r = 5.5, b = 4, l = 0.1, unit = "pt") # b=4 to accommodate subscript
+          # plot.margin = margin(t = 5.5, r = 5.5, b = 5.5, l = 5.5, unit = "pt") # default margin
+        )
+    })
+
+
+
+  p <- ggpubr::ggarrange(
+    p_forest$tn + th_finher + labs(x = expression("Log(HR"^a*") ")) +  # *close superscript, space is for margin
+      theme (axis.title.x.bottom = element_text(size = outer_text_size-1)),
+    p_annot$tn + th_finher + labs(x = "") + theme(strip.text.y = element_blank()),
+
+    p_forest$her2 + th_finher + labs(x = expression("Log(HR"^a*") ")) +
+      theme(axis.text.y = element_blank(),
+            axis.title.x.bottom = element_text(size = outer_text_size-1)),
+    p_annot$her2 + th_finher + labs(x = "") + theme(strip.text.y = element_blank()),
+
+    ncol = 4,
+    nrow = 1,
+    # widths = c(.16,.375,.09,.375), #old
+    # widths = c(.21,.37,.14,.37),
+    widths = c(.23,.36,.13,.36),
+    labels = c("A","","B",""),
+    hjust = c(-0.5,-0.5,0.5,-0.5) #default = -0.5
+  )
+
+  pdf(file = str_c(prefix, "_", event_type, "-MTA-immune_interaction.pdf") %>% str_to_lower(),
+      width = width, height = height)
+  print(p)
+  dev.off()
+}
+
+
+
+plot_finher_prognosis <- function(
+    tn_cox_sum,
+    her2_cox_sum,
+    event_type,
+    inner_text_size,
+    outer_text_size,
+    color = NULL,
+    prefix,
+    width,
+    height){
+
+
+  # Function for prognosis plot (A:TN, B:HER2)
+
 
   # # Test data
-  # m0 = m0
-  # m1 = m1
-  # test_var = biomarker
-  # inter_var = interaction_variable
+  # tn_cox_sum <- finher_tn
+  # her2_cox_sum <- finher_her2
+  # event_type <- "DDFS"
+  # color = NULL
+  # inner_text_size = 2.75
+  # outer_text_size = 10
+  # prefix = str_c(out_figures,"finher_prognosis")
+  # width = 7.5
+  # height = 8.5
 
 
-  # interaction effect summary
-  # >>>>>>>>>>>>>>>>>>>>>>>>>>
-  m1_coef <- summary(m1)$coefficients
-  m1_ci <- confint.default(m1)
+  # Common theme
+  th_finher <- theme(
+    text = element_text(size = outer_text_size),
+    axis.text.x.bottom = element_text(color = "black"),
+    axis.title.y = element_blank(),
+    # strip.background = element_blank(),
+    # strip.text = element_blank(),
+    strip.text.x = element_blank(),
+    panel.grid = element_blank(),
+    # to adjust space between facet panels
+    panel.spacing.y = unit(x = 2, units = "pt")
+  )
 
 
-  # subsetting relevent terms
-  # >>>>>>>>>>>>>>>>>>>>>>>>>
-  # (i.e. test_var (sig) and terms interacting with test_var)
 
-  idx <- rownames(m1_ci)[str_detect(rownames(m1_ci), test_var)] # this will select Sig and Sig:Arm2
-  # Note
-  # idx[1] : reference arm
-  # The remaining terms are interaction terms
-
-
-  # Updating estimate, std.err and ci for all relevant rows except the 1st row
-  # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-  if (identical(rownames(m1_ci), rownames(m1_coef))) {
-
-    x <- cbind(m1_coef[idx, ], m1_ci[idx, ])
-
-    # Update wald p with loglikelihood p
-    p <- lrtest(m0, m1)$"Pr(>Chisq)" %>% na.omit() %>% as.numeric()
-
-    # Obsolete code logic
-    # Both pvalues in x is set to p, to aid in plotting
-    # x[, "Pr(>|z|)"] <- p #
-
-    # New code logic
-    # The pvalues can be replicated at any point later in the script,
-    # but deletion is difficult. Hence likilihoog pvalue is set for reference term
-    x[, "Pr(>|z|)"] <- NA # Resetting original pvalues
-    x[idx[1], "Pr(>|z|)"] <- p # Setting likihood ratio test interaction pvalue
+  cox_sum <- purrr::map(
+    list(
+      tn = tn_cox_sum[["prog"]][[event_type]]$main_effect,
+      her2 = her2_cox_sum[["prog"]][[event_type]]$HER2$main_effect
+    ),
+    function(x){
+      x %>%
+        dplyr::mutate(
+          HR = HR %>% round(digits=2),
+          Low95 = Low95 %>% round(digits=2),
+          Up95 = Up95 %>% round(digits=2),
+          HR_text = str_c(HR,"(",Low95," to ",Up95,")"),
+          P_text = str_c(
+            if_else(P < 0.001,"<.001", round(P, digits=3) %>% as.character()),
+            "(",
+            if_else(is.na(P_adj),
+                    "NA",
+                    if_else(P_adj < 0.001,"<.001", round(P_adj,digits=3) %>% as.character())
+            ),
+            ")"),
 
 
-    # Updating estimate, std.err and ci for all relevant rows except the 1st row (reference row)
+          Variable = str_split_fixed(string = Variable, pattern = ":", n = 2)[, 1] %>%
+            str_replace("scaled_",""),
 
-    # The first row is the effect from reference arm.
-    # All other rows represents change with respect to the reference row
-    # All other rows required to adjust it effect for independet comparison in plots
-    # Adjustment 1: add reference effect to each other row's effect
-    # Adjustment 2: adjust other row's standard error
-    # Adjustment 3: adjust other row's 95% ci
+          # grouping modules
+          Variable_class = case_when(
+            Variable == "TIL" ~ "H&E",
 
-    for(i in idx[-1]){
+            str_detect(Variable, "Denovo") ~ "De-novo",
+            str_detect(Variable, "Pooled") ~ "Published-pooled",
+            str_detect(Variable, "MCPcounter") ~ "Cell",
 
-      # Note: idx[-1] suggest all terms excluding reference term/arm
+            Variable == "Hamy2016_Immune" ~ "Immune",
+            Variable == "Yang2018_Immune" ~ "Immune",
 
-      # Update coef(Log-HR)
-      # Interaction term contains change from reference
-      # To get actual coef(Log-HR), add interaction coef(Log-HR)
-      # to reference Estiate(Log-OR)
-      x[i, "coef"] <- sum(x[c(idx[1], i), "coef"]) # idx[1] represents reference arm
-      # update exp(coef) ~ HR
-      x[i, "exp(coef)"] <- exp(x[i, "coef"])
+            Variable == "Gruosso2019_Interferon" ~ "Interferon",
+            Variable == "Farmer2009_MX1" ~ "Interferon",
+            Variable == "Hamy2016_Interferon" ~ "Interferon",
+            Variable == "Nirmal2018_Interferon" ~ "Interferon",
 
-      # Note in the following code descriptions, coef ~ Estimate(Log-OR).
-      # To get CI of sum of coefs find Std.Error of sum of coefs
-      # Std.Error of sum of coefs: sqrt( sum(coef variances) + 2 * their covariance)
-      # Sum of variances reference from wikipedia, search term: "Variance"
-      # Also see:
-      # https://stats.stackexchange.com/questions/401439/how-to-calculate-treatment-effect-and-its-confidence-interval-for-subgroups-in-a
-      se <- sqrt(
-        sum(x[c(idx[1], i), "se(coef)"] ^ 2) +
-          (2 * vcov(m1)[idx[1], i])
-      )
-      x[i, "se(coef)"] <- se
-      x[i, "2.5 %"] <- x[i, "coef"] - (1.96 * se)
-      x[i, "97.5 %"] <- x[i, "coef"] + (1.96 * se)
+
+            Variable == "Hamy2016_Ecm" ~ "Fibrosis",
+            Variable == "Naba2014_Ecmcore" ~ "Fibrosis",
+            Variable == "Triulzi2013_Ecm" ~ "Fibrosis",
+
+            Variable == "Sorrentino2014_Chol" ~ "Chol.", #"Cholesterol"
+
+            TRUE ~ "Unknown"
+          ) %>%
+            factor(
+              levels = c(
+                "H&E", "De-novo",
+                "Immune", "Interferon", "Chol.", "Fibrosis",
+                "Published-pooled", "Cell")
+            ),
+
+          Variable =  Variable %>%
+            str_replace("Denovo","") %>%
+            str_replace("Pooled","") %>%
+            str_replace("MCPcounter","") %>%
+
+            str_replace("Hamy2016_Immune","Hamy2016") %>%
+            str_replace("Yang2018_Immune","Yang2018") %>%
+
+            str_replace("Gruosso2019_Interferon","Gruosso2019") %>%
+            str_replace("Farmer2009_MX1","Farmer2009") %>%
+            str_replace("Hamy2016_Interferon","Hamy2016") %>%
+            str_replace("Nirmal2018_Interferon","Nirmal2018") %>%
+
+            str_replace("Hamy2016_Ecm","Hamy2016") %>%
+            str_replace("Naba2014_Ecmcore","Naba2014") %>%
+            str_replace("Triulzi2013_Ecm","Triulzi2013") %>%
+
+            str_replace("Sorrentino2014_Chol","Sorrentino2014") %>%
+
+            str_replace("Tcell","T.Cell") %>%
+            str_replace("B.Lineage","B.Cell") %>%
+            str_replace("Monocytic.Lineage","Monocyte") %>%
+            str_replace("Myeloid.Dendritic","M.Dendritic") %>%
+            # Endothelial
+            str_replace("Fibroblasts","Fibroblast") %>%
+
+            str_replace("_","") %>%
+
+            factor(levels = c(
+
+              # H&E
+              "TIL",
+
+              # denovo: "TILsig", "Immune","ECM",
+              # pooled: "Immune", "Interferon", "Cholesterol", "Fibrosis",
+
+              # denovo + pooled
+              "TILsig", "Immune","ECM", "Interferon", "Cholesterol", "Fibrosis",
+
+              # immune: "Hamy2016","Yang2018",
+              # interferon: "Gruosso2019", "Farmer2009", "Hamy2016", "Nirmal2018",
+              # cholesterol:"Sorrentino2014",
+              # fibrosis: "Hamy2016", "Naba2014", "Triulzi2013",
+
+              # immune + interferon + cholesterol + fibrosis
+              "Gruosso2019", "Farmer2009", "Hamy2016", "Nirmal2018",
+              "Yang2018",
+              "Naba2014", "Triulzi2013",
+              "Sorrentino2014",
+
+              # cell
+              "T.Cell", "Cyto.Lympho", "B.Cell", "NK.Cell",
+              "Monocyte", "M.Dendritic", "Neutrophil",
+              "Endothelial", "Fibroblast"
+
+            ) %>% rev())
+
+
+
+        ) %>%
+        dplyr::select(HR, Low95, Up95, HR_text, P_text, Variable, Variable_class, Subtype)
 
     }
-
-  } else {
-    # As an error catching logic
-    x <- rep(NA, 6)
-    names(x) = c("coef", "exp(coef)", "se(coef)", "z", "Pr(>|z|)", "2.5 %", "97.5 %")
-    # vector names used in following code
-  }
-
-
-  # Appending reference arm detials to rownames(x)[1]
-  non_ref_arm <- grep(x = colnames(m1$x), pattern = ":", value = T)
-  non_ref_arm <- str_split_fixed(string = non_ref_arm, pattern = ":", n = 2)[,2]
-
-  ref_arm <- setdiff(
-    unique(m1$model[, inter_var]),
-    str_replace(string = non_ref_arm, pattern = inter_var, replacement = "")
   )
-  ref_arm <- str_c(inter_var, ref_arm)
-
-  if (str_detect(rownames(x)[1], ":")) {
-    # Making sure the 1st row is reference row.
-    # For reference row ":" is not present.
-    stop("Error in interaction summary preparation.")
-  } else {
-    rownames(x)[1] <- str_c(rownames(x)[1], ":", ref_arm)
-  }
 
 
-
-  x %>%
-    as_tibble(rownames = "Module_name") %>%
-    dplyr::rename(
-      Exp_coef = "exp(coef)",
-      Std_error = "se(coef)",
-      Z_value = "z",
-      P = "Pr(>|z|)",
-      L95 = "2.5 %", # coef 95% CI
-      U95 = "97.5 %" # coef 95% CI
-    ) %>%
-    dplyr::rename_all(~str_to_title(.x))
-
-} # end of fun
-
-
-
-get_patient_summary <- function(xx1){
-
-  # What this function does?
-  # >>>>>>>>>>>>>>>>>>>>>>>>
-  #
-  # Function to generate patient summary
+  p_forest <- purrr::map(
+    cox_sum,
+    function(x){
+      x %>%
+        ggplot() +
+        geom_point(aes(x = log(HR), y = Variable)) +
+        geom_errorbarh(aes(xmin = log(Low95), xmax = log(Up95), y = Variable), height = .1) +
+        geom_vline(xintercept = 0, linetype = "dashed") +
+        scale_x_continuous(breaks = scales::pretty_breaks(n = 4)) +
+        facet_grid(facets = Variable_class ~ 1,
+                   switch = "y",
+                   scales = "free_y",
+                   space = "free_y") +
+        theme_bw() +
+        theme(
+          # to manage space in ggarrage()
+          plot.margin = margin(t = 5.5, r = 0.1, b = 5.5, l = 5.5, unit = "pt")
+          # plot.margin = margin(t = 5.5, r = 5.5, b = 5.5, l = 5.5, unit = "pt") # default margin
+        )
+    })
 
 
-  # input
-  # >>>>>
-  #
-  # xx1: tibble of patient characteristics
-
-  bind_rows(
-
-    # Age
-    bind_rows(
-      # non-NAs
-      bind_cols(
-        tibble(variable = "Age<=50"),
-        (xx1$Age <= 50) %>% table() %>% as_tibble() %>% dplyr::rename(cat = ".")
-      ),
-      # NAs
-      tibble( variable = "Age<=50",
-              "cat" = "NA",
-              n = xx1$Age %>% is.na() %>% sum())
-    ),
-
-    # Grade
-    bind_rows(
-      # non-NAs
-      bind_cols(
-        tibble(variable = "Grade"),
-        xx1$Grade %>% table() %>% as_tibble() %>% dplyr::rename(cat = ".")
-      ),
-      # NAs
-      tibble( variable = "Grade",
-              "cat" = "NA",
-              n = xx1$Grade %>% is.na() %>% sum())
-    ),
-
-
-    # Node
-    bind_rows(
-      # non-NAs
-      bind_cols(
-        tibble(variable = "Node"),
-        (xx1$Node_bin) %>% table() %>% as_tibble() %>% dplyr::rename(cat = ".")
-      ),
-      # NAs
-      tibble( variable = "Node",
-              "cat" = "NA",
-              n = xx1$Node_bin %>% is.na() %>% sum())
-    ),
-
-    # Size
-    bind_rows(
-      # non-NAs
-      bind_cols(
-        tibble(variable = "Size"),
-        (xx1$Size_cat) %>% table() %>% as_tibble() %>% dplyr::rename(cat = ".")
-      ),
-      # NAs
-      tibble( variable = "Size",
-              "cat" = "NA",
-              n = xx1$Size_cat %>% is.na() %>% sum())
-    ),
+  p_annot <- purrr::map(
+    cox_sum,
+    function(x){
+      x %>%
+        tidyr::gather("key", "value", HR_text, P_text) %>%
+        dplyr::mutate(key = purrr::map_chr(
+          key,
+          ~switch(.x,
+                  # HR_text = "HR(95%CI)",
+                  # P_text = "P(Padj*)",
+                  # Het_text = "Q(P)/I^2"
+                  HR_text = "HR^a(95%CI)",
+                  P_text = "P(Padj^b)",
+                  Het_text= "Q(P)/I^2")
+        ) %>%
+          factor(
+            # levels = c("HR(95%CI)","P(Padj*)", "Q(P)/I^2")
+            levels = c("HR^a(95%CI)","P(Padj^b)","Q(P)/I^2"),
+            labels = c(expression("HR"^a*"(95%CI) "),
+                       expression("P(Padj"^b*") "),
+                       expression("Q(P)/I"^2))
+          )
+        ) %>%
+        ggplot() +
+        geom_text(aes(x = key, y = Variable, label = value), size = inner_text_size) +
+        # geom_vline(xintercept = 1.6, linetype = "solid", color = "gray") +
+        # geom_vline(xintercept = 2.4, linetype = "solid", color = "gray") +
+        facet_grid(facets = Variable_class ~ 1,
+                   switch = "y",
+                   scales = "free_y",
+                   space = "free_y") +
+        scale_x_discrete(labels = ~parse(text = .x)) +
+        # Ref: https://stackoverflow.com/questions/73014834/how-to-create-subscripts-in-the-names-of-variables-in-r
+        theme_bw() +
+        theme(
+          axis.text.y.left = element_blank(),
+          axis.ticks.y.left = element_blank(),
+          # to manage space in ggarrage()
+          plot.margin = margin(t = 5.5, r = 5.5, b = 4, l = 0.1, unit = "pt") # b=4 to accommodate subscript
+          # plot.margin = margin(t = 5.5, r = 5.5, b = 5.5, l = 5.5, unit = "pt") # default margin
+        )
+    })
 
 
-    # ER
-    bind_rows(
-      # non-NAs
-      bind_cols(
-        tibble(variable = "ER"),
-        (xx1$Er) %>% table() %>% as_tibble() %>% dplyr::rename(cat = ".")
-      ),
-      # NAs
-      tibble( variable = "ER",
-              "cat" = "NA",
-              n = xx1$Er %>% is.na() %>% sum())
-    ),
 
-    # PR
-    bind_rows(
-      # non-NAs
-      bind_cols(
-        tibble(variable = "PR"),
-        (xx1$Pr) %>% table() %>% as_tibble() %>% dplyr::rename(cat = ".")
-      ),
-      # NAs
-      tibble( variable = "PR",
-              "cat" = "NA",
-              n = xx1$Pr %>% is.na() %>% sum())
-    ),
+  p <- ggpubr::ggarrange(
+    p_forest$tn + th_finher + # labs(x = "Log-HR") +
+      labs(x = expression("Log(HR"^a*") ")) +  # *close superscript, space is for margin
+      theme(axis.title.x.bottom = element_text(size = outer_text_size-1)),
+    p_annot$tn + th_finher + labs(x = "") + theme(strip.text.y = element_blank()),
 
-    # HR
-    bind_rows(
-      # non-NAs
-      bind_cols(
-        tibble(variable = "HR"),
-        (xx1$Hr) %>% table() %>% as_tibble() %>% dplyr::rename(cat = ".")
-      ),
-      # NAs
-      tibble( variable = "HR",
-              "cat" = "NA",
-              n = xx1$Hr %>% is.na() %>% sum())
-    ),
+    p_forest$her2 + th_finher + # labs(x = "Log-HR") +
+      labs(x = expression("Log(HR"^a*") ")) +  # *close superscript, space is for margin
+      theme(axis.text.y = element_blank(),
+            axis.title.x.bottom = element_text(size = outer_text_size-1)),
+    p_annot$her2 + th_finher + labs(x = "") + theme(strip.text.y = element_blank()),
 
-    # HER2
-    bind_rows(
-      # non-NAs
-      bind_cols(
-        tibble(variable = "HER2"),
-        (xx1$Her2) %>% table() %>% as_tibble() %>% dplyr::rename(cat = ".")
-      ),
-      # NAs
-      tibble( variable = "HER2",
-              "cat" = "NA",
-              n = xx1$Her2 %>% is.na() %>% sum())
-    ),
-
-    # Subtype IHC
-    bind_rows(
-      # non-NAs
-      bind_cols(
-        tibble(variable = "Subtype IHC"),
-        (xx1$Subtype_ihc) %>% table() %>% as_tibble() %>% dplyr::rename(cat = ".")
-      ),
-      # NAs
-      tibble( variable = "Subtype IHC",
-              "cat" = "NA",
-              n = xx1$Subtype_ihc %>% is.na() %>% sum())
-    ),
-
-    # Subtype PAM50
-    bind_rows(
-      # non-NAs
-      bind_cols(
-        tibble(variable = "Subtype PAM50"),
-        (xx1$Subtype_pam50) %>% table() %>% as_tibble() %>% dplyr::rename(cat = ".")
-      ),
-      # NAs
-      tibble( variable = "Subtype PAM50",
-              "cat" = "NA",
-              n = xx1$Subtype_pam50 %>% is.na() %>% sum())
-    ),
-
-
-    # pCR
-    bind_rows(
-      # non-NAs
-      bind_cols(
-        tibble(variable = "pCR"),
-        xx1 %>% group_by(cat = Response) %>% summarise(n = n())
-        # The below code will throw error when all Response == NA, if regimen = adj
-        # (xx1$Response) %>% table() %>% as_tibble() %>% dplyr::rename(cat = ".")
-      ),
-      # NAs
-      tibble( variable = "pCR",
-              "cat" = "NA",
-              n = xx1$Response %>% is.na() %>% sum())
-    ) %>% na.omit(),
-
-    # DFS
-    bind_rows(
-      # non-NAs
-      bind_cols(
-        tibble(variable = "DFS"),
-        (xx1$Event_dfs) %>% table() %>% as_tibble() %>% dplyr::rename(cat = ".")
-      ),
-      # NAs
-      tibble( variable = "DFS",
-              "cat" = "NA",
-              n = xx1$Event_dfs %>% is.na() %>% sum())
-    ) %>%
-      dplyr::mutate(cat = cat %>%
-                      str_replace("0", "no-event") %>%
-                      str_replace("1", "event")),
-
-    # Arm_chemo
-    bind_rows(
-      # non-NAs
-      bind_cols(
-        tibble(variable = "Arm_chemo"),
-        (xx1$Arm_chemo) %>% table() %>% as_tibble() %>% dplyr::rename(cat = ".")
-      ),
-      # NAs
-      tibble( variable = "Arm_chemo",
-              "cat" = "NA",
-              n = xx1$Arm_chemo %>% is.na() %>% sum())
-    ),
-
-    # Arm_her2
-    bind_rows(
-      # non-NAs
-      bind_cols(
-        tibble(variable = "Arm_her2"),
-        (xx1$Arm_her2) %>% table() %>% as_tibble() %>% dplyr::rename(cat = ".")
-      ),
-      # NAs
-      tibble( variable = "Arm_her2",
-              "cat" = "NA",
-              n = xx1$Arm_her2 %>% is.na() %>% sum())
-    ),
-
-    # Arm_hormone
-    bind_rows(
-      # non-NAs
-      bind_cols(
-        tibble(variable = "Arm_hormone"),
-        (xx1$Arm_hormone) %>% table() %>% as_tibble() %>% dplyr::rename(cat = ".")
-      ),
-      # NAs
-      tibble( variable = "Arm_hormone",
-              "cat" = "NA",
-              n = xx1$Arm_hormone %>% is.na() %>% sum())
-    ),
-
-    # Arm_other
-    bind_rows(
-      # non-NAs
-      bind_cols(
-        tibble(variable = "Arm_other"),
-        (xx1$Arm_other) %>% table() %>% as_tibble() %>% dplyr::rename(cat = ".")
-      ),
-      # NAs
-      tibble( variable = "Arm_other",
-              "cat" = "NA",
-              n = xx1$Arm_other %>% is.na() %>% sum())
-    )
+    ncol = 4,
+    nrow = 1,
+    # widths = c(.16,.375,.09,.375), #old
+    # widths = c(.21,.37,.14,.37),
+    widths = c(.23,.36,.13,.36),
+    labels = c("A","","B",""),
+    hjust = c(-0.5,-0.5,0.5,-0.5) #default = -0.5
   )
+
+  pdf(file = str_c(prefix, "_", event_type, "_prognosis.pdf") %>% str_to_lower(),
+      width = width, height = height)
+  print(p)
+  dev.off()
 }
+
+
+#
+# ==============================================================================
+
+
+
+
+# Manuscript table formatting
+# ==============================================================================
+
+
+clin_summary_table <- function(x, xvar, yvar = NA){
+  # x: tibble
+  # xvar: variable to be grouped
+  # yvar: variable on which split counts of xvar to be computed
+
+  # # Test data
+  # x =  clin_neoadj_finneo %>%
+  #   dplyr::mutate(Age_bin_50 = if_else(Age_bin_50 == "old", ">50","<=50") %>%
+  #                   factor(levels = c("<=50", ">50", NA)))
+  # xvar = "Age_bin_50"
+  # yvar = "Series_matrix_accession"
+
+  xx <- table(x[ ,xvar] %>% deframe(), rep("All", nrow(x)), useNA = "ifany")
+
+  if(!is.na(yvar)){
+
+    yy <- table(x[ ,c(xvar,yvar)], useNA = "ifany") # if NA present, new column will be introduced
+
+    if(identical(rownames(xx),rownames(yy))){
+      out <- cbind(tibble(Variable = xvar, Values = rownames(yy)),
+                   as.matrix.data.frame(xx), as.matrix.data.frame(yy))
+      names(out) <- c("Variable", "Values", "All", colnames(yy))
+
+      return(out %>% tibble())
+
+    } else{
+
+      return(NULL)
+    }
+
+  } else{
+    out <- cbind(tibble(Variable = xvar, Values = rownames(xx)),
+                 as.matrix.data.frame(xx))
+    names(out) <- c("Variable", "Values", "All")
+
+    return(out %>% tibble())
+  }
+
+
+}
+
+
+#
+# ==============================================================================
+
+
+
 
 
 
